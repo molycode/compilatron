@@ -1,0 +1,6 @@
+[submodule "external/tge-core"]
+	path = external/tge-core
+	url = https://github.com/molycode/tge-core.git
+[submodule "external/glfw"]
+	path = external/glfw
+	url = https://github.com/glfw/glfw.git

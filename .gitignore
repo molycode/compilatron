@@ -1,0 +1,56 @@
+CLAUDE.md
+tasks/
+
+# Developer tools (icon source artwork, generation scripts — not needed by end users)
+tools/
+
+# Build output directories
+/build/
+
+# Compiled executables
+/Compilatron
+
+# Downloaded/built dependencies
+dependencies/
+
+# Downloaded compiler sources
+sources/
+
+# User-installed compilers (root level only)
+/compilers/
+
+# User-specific runtime config (presets, settings saved at runtime)
+config/
+
+# External dependencies — vendored copies and submodules are tracked; nothing excluded here
+
+# IDE files
+CMakeLists.txt.user
+CMakeUserPresets.json
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup / temp files
+*.backup
+*.bak
+*.old
+*~
+backups/
+*.tmp
+*.swp
+*.swo
+
+# Log files
+*.log
+
+# Object files and static libs
+*.o
+*.o.tmp
+*.a
+*.so
+*.bak2

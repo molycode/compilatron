@@ -1,0 +1,17 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Compilatron
+Comment=Cross-platform GUI for building compilers (GCC and Clang)
+Exec=@CMAKE_INSTALL_FULL_BINDIR@/Compilatron
+Icon=compilatron
+Terminal=false
+StartupNotify=true
+Categories=Development;IDE;Programming;
+Keywords=compiler;gcc;clang;llvm;build;development;
+StartupWMClass=Compilatron
+Actions=Uninstall;
+
+[Desktop Action Uninstall]
+Name=Uninstall Compilatron
+Exec=@CMAKE_INSTALL_FULL_BINDIR@/compilatron-uninstall
