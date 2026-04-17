@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
 		Ctrn::g_rootDir = std::filesystem::weakly_canonical(executableDir).string();
 	}
 
-	Ctrn::g_dataDir = Ctrn::g_rootDir + "/compilatron";
+	Ctrn::g_dataDir = Ctrn::g_rootDir + "/ctrn";
 
 	Tge::Logging::GetLogSystem().Initialize("compilatron", Ctrn::g_dataDir + "/logs", Ctrn::g_dataDir + "/configs", Tge::Logging::ETimestampMode::WallClock);
 

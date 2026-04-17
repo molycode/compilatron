@@ -126,11 +126,11 @@ add_subdirectory(code)
 install(TARGETS Compilatron
 	RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
-# Fonts — namespaced under compilatron/ to avoid collisions in shared bin dirs
+# Fonts — namespaced under ctrn/ to avoid collisions in shared bin dirs
 install(FILES
 	"${CMAKE_SOURCE_DIR}/external/imgui/misc/fonts/Roboto-Medium.ttf"
 	"${CMAKE_SOURCE_DIR}/external/fonts/fa-solid-900.ttf"
-	DESTINATION "${CMAKE_INSTALL_BINDIR}/compilatron/fonts")
+	DESTINATION "${CMAKE_INSTALL_BINDIR}/ctrn/fonts")
 
 if(PLATFORM_LINUX)
 	# PNG icons — multiple sizes for desktop environment compatibility
