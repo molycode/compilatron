@@ -219,12 +219,13 @@ int main(int argc, char* argv[])
 
 	int numExtraFrames{ 0 };
 	constexpr int ExtraFramesAfterEvent{ 6 };
+	constexpr double ActiveFrameInterval{ 1.0 / 30.0 };
 
 	while (!glfwWindowShouldClose(window))
 	{
 		if (numExtraFrames > 0)
 		{
-			glfwPollEvents();
+			glfwWaitEventsTimeout(ActiveFrameInterval);
 			numExtraFrames--;
 		}
 		else
