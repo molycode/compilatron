@@ -19,7 +19,7 @@ target_include_directories(Compilatron SYSTEM PRIVATE
 )
 
 # Copy font files alongside the executable
-set(FONTS_OUTPUT_DIR ${CMAKE_BINARY_DIR}/ctrn/fonts)
+set(FONTS_OUTPUT_DIR ${CMAKE_BINARY_DIR}/compilatron-data/fonts)
 add_custom_command(TARGET Compilatron POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${FONTS_OUTPUT_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different

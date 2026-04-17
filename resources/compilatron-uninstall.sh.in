@@ -28,9 +28,9 @@ echo "Uninstalling Compilatron from $PREFIX ..."
 echo ""
 
 remove_file "$BINDIR/compilatron"
-remove_file "$BINDIR/ctrn/fonts/Roboto-Medium.ttf"
-remove_file "$BINDIR/ctrn/fonts/fa-solid-900.ttf"
-remove_dir_if_empty "$BINDIR/ctrn/fonts"
+remove_file "$BINDIR/compilatron-data/fonts/Roboto-Medium.ttf"
+remove_file "$BINDIR/compilatron-data/fonts/fa-solid-900.ttf"
+remove_dir_if_empty "$BINDIR/compilatron-data/fonts"
 
 remove_file "$DATADIR/applications/compilatron.desktop"
 remove_file "$DATADIR/icons/hicolor/32x32/apps/compilatron.png"
@@ -47,7 +47,7 @@ remove_file "$BINDIR/compilatron-uninstall"
 
 # Data directory — contains user configs, presets, logs, and built compilers.
 # When launched from the desktop (no terminal), use a GUI dialog; otherwise prompt.
-DATADIR_APP="$BINDIR/ctrn"
+DATADIR_APP="$BINDIR/compilatron-data"
 if [ -d "$DATADIR_APP" ]; then
 	remove_data=false
 	msg="Remove application data?\n\n$DATADIR_APP\n\nThis includes your configs, presets, logs, and any compilers you built.\nThis cannot be undone."
