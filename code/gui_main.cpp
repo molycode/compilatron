@@ -217,9 +217,21 @@ int main(int argc, char* argv[])
 		mainGui->Initialize();
 	}
 
+	int numExtraFrames{ 0 };
+	constexpr int ExtraFramesAfterEvent{ 3 };
+
 	while (!glfwWindowShouldClose(window))
 	{
-		glfwWaitEvents();
+		if (numExtraFrames > 0)
+		{
+			glfwPollEvents();
+			numExtraFrames--;
+		}
+		else
+		{
+			glfwWaitEvents();
+			numExtraFrames = ExtraFramesAfterEvent;
+		}
 
 		// Handle window resize requests from other parts of the application
 		if (Ctrn::g_mainWindowNeedsResize.load())
