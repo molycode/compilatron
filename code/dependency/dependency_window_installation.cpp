@@ -41,6 +41,7 @@ void CDependencyWindow::StartSingleInstallation(std::string_view identifier, std
 			result.message = result.success
 				? std::format("Installed {} successfully", depInfoCopy.name)
 				: (error.empty() ? "Unknown error" : error);
+			RequestRedraw();
 			return result;
 		});
 	}

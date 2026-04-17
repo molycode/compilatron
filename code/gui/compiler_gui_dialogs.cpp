@@ -351,6 +351,7 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 					gLog.Warning(Tge::Logging::ETarget::File,
 						"CompilerGUI: zenity directory picker failed or was cancelled (exit code {})",
 						zenityResult.exitCode);
+					RequestRedraw();
 					return SCompilerScanResult{};
 				}
 
@@ -361,7 +362,9 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 					directory.pop_back();
 				}
 
-				return ScanDirectoryForCompilers(directory);
+				auto result{ ScanDirectoryForCompilers(directory) };
+				RequestRedraw();
+				return result;
 			});
 		}
 
@@ -1853,8 +1856,10 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 						m_lldBrowseActive = true;
 						m_lldBrowseFuture = std::async(std::launch::async, []() -> std::string
 						{
-							return CProcessExecutor::Execute(
-								"zenity --file-selection --title=\"Select ld.lld\" 2>/dev/null").output;
+							auto result{ CProcessExecutor::Execute(
+								"zenity --file-selection --title=\"Select ld.lld\" 2>/dev/null").output };
+							RequestRedraw();
+							return result;
 						});
 					}
 

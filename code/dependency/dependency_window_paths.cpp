@@ -248,6 +248,7 @@ void CDependencyWindow::LaunchFileBrowser(std::string_view identifier, std::stri
 				"DependencyTab: zenity file picker failed for {}: {}", identStr, result.output);
 		}
 
+		RequestRedraw();
 		return result.output;
 	});
 }

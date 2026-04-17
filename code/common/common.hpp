@@ -58,4 +58,7 @@ extern std::atomic<bool> g_mainWindowNeedsResize;
 // Utility function: Check if a path contains characters problematic for build systems
 // Returns true if path contains spaces, parentheses, or other shell-problematic characters
 [[nodiscard]] bool HasProblematicPathCharacters(std::string_view path);
+
+// Wake up the main render loop from any thread. Call whenever background state changes need display.
+void RequestRedraw();
 } // namespace Ctrn

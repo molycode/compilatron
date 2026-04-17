@@ -1051,6 +1051,7 @@ void CCompilerUnit::ReportProgress(ECompilerStatus status, float progress, std::
 	if (m_progressCallback)
 	{
 		m_progressCallback(m_name, status, progress, task);
+		RequestRedraw();
 	}
 }
 
@@ -1075,6 +1076,7 @@ void CCompilerUnit::ReportCompletion(bool success, std::string_view errorMessage
 	if (m_completionCallback)
 	{
 		m_completionCallback(m_name, success, std::string{errorMessage});
+		RequestRedraw();
 	}
 }
 

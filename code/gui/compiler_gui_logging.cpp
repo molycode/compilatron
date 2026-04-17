@@ -28,6 +28,7 @@ void CCompilerGUI::RegisterUnitLogListener(uint16_t tabId, CCompilerUnit& unit)
 		{
 			std::lock_guard<std::mutex> lock(m_unitLogsMutex);
 			m_unitLogs[tabId].emplace_back(msg.level, std::format("[{}] {}", msg.formattedTimestamp, msg.message));
+			RequestRedraw();
 		});
 }
 

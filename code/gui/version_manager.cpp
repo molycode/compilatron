@@ -237,6 +237,7 @@ void CVersionManager::RefreshWorker(ECompilerKind kind, std::function<void(bool,
 		if (callback)
 		{
 			callback(false, "No versions found");
+			RequestRedraw();
 		}
 
 		m_refreshInProgress[kind] = false;
@@ -286,6 +287,7 @@ void CVersionManager::RefreshWorker(ECompilerKind kind, std::function<void(bool,
 	if (callback)
 	{
 		callback(true, "");
+		RequestRedraw();
 	}
 
 	m_refreshInProgress[kind] = false;

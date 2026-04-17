@@ -229,6 +229,7 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 	if (m_completionCallback)
 	{
 		m_completionCallback(success, success ? "Build completed successfully" : "Build failed");
+		RequestRedraw();
 	}
 }
 
@@ -704,6 +705,7 @@ void CCompilerBuilder::UpdateProgress(EBuildPhase phase, float phaseProgress,
 	if (m_progressCallback)
 	{
 		m_progressCallback(m_progress);
+		RequestRedraw();
 	}
 
 	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Progress: {} (%.1f%%) - {} {}", statusMessage, m_progress.overallProgress * 100.0f, task.empty() ? "" : "- ", task);

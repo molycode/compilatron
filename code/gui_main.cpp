@@ -30,6 +30,11 @@ static void GlfwErrorCallback(int error, char const* description)
 	// No console output - GUI only
 }
 
+void Ctrn::RequestRedraw()
+{
+	glfwPostEmptyEvent();
+}
+
 int main(int argc, char* argv[])
 {
 	std::error_code ec;
@@ -214,7 +219,7 @@ int main(int argc, char* argv[])
 
 	while (!glfwWindowShouldClose(window))
 	{
-		glfwWaitEventsTimeout(1.0 / 60.0);
+		glfwWaitEvents();
 
 		// Handle window resize requests from other parts of the application
 		if (Ctrn::g_mainWindowNeedsResize.load())

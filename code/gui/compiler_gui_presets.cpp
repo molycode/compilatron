@@ -321,7 +321,9 @@ void CCompilerGUI::RenderPresetControls()
 		m_installDirBrowseFuture = std::async(std::launch::async, []() -> std::string
 		{
 			std::string const zenityCmd = "zenity --file-selection --directory --title=\"Select Install Directory for Compilers\" 2>/dev/null";
-			return CProcessExecutor::Execute(zenityCmd).output;
+			auto result{ CProcessExecutor::Execute(zenityCmd).output };
+			RequestRedraw();
+			return result;
 		});
 	}
 
