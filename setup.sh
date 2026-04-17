@@ -208,11 +208,29 @@ ninja_pkg_name() {
     esac
 }
 
-# Ensure ninja is available: check PATH, tools/, package manager, then offer download.
+# Ensure ninja is available: check custom path, PATH, tools/, package manager, then offer download.
 ensure_ninja() {
     echo ""
     echo "NINJA:"
     echo ""
+
+    # Custom path from --ninja flag
+    if [ -n "$CUSTOM_NINJA" ]; then
+        local resolved=""
+        if [ -x "$CUSTOM_NINJA" ] && [ -f "$CUSTOM_NINJA" ]; then
+            resolved="$CUSTOM_NINJA"
+        elif [ -d "$CUSTOM_NINJA" ]; then
+            [ -x "$CUSTOM_NINJA/ninja" ]     && resolved="$CUSTOM_NINJA/ninja"
+            [ -x "$CUSTOM_NINJA/bin/ninja" ] && resolved="$CUSTOM_NINJA/bin/ninja"
+        fi
+        if [ -z "$resolved" ]; then
+            log_error "ninja not found at: $CUSTOM_NINJA"
+            exit 1
+        fi
+        export PATH="$(dirname "$resolved"):$PATH"
+        printf "  ${GREEN}✓${NC}  ninja  %s\n" "$resolved"
+        return
+    fi
 
     # Already in PATH
     if command_exists ninja; then
@@ -984,6 +1002,7 @@ show_usage() {
     echo "Options:"
     echo "  --compiler PATH    Use specific compiler or directory"
     echo "  --cmake PATH       Use specific cmake binary or install root"
+    echo "  --ninja PATH       Use specific ninja binary or directory"
     echo "  --no-deps         Skip dependency installation"
     echo "  --no-build        Skip building step"
     echo "  --static          Link libstdc++ statically (recommended with custom compilers)"
@@ -999,11 +1018,16 @@ show_usage() {
     echo "  - Full path to cmake binary: /home/user/cmake-4.3.0/bin/cmake"
     echo "  - Install root or bin/ directory: /home/user/cmake-4.3.0"
     echo ""
+    echo "Ninja PATH can be:"
+    echo "  - Full path to ninja binary: /home/user/tools/ninja/ninja"
+    echo "  - Directory containing ninja: /home/user/tools/ninja"
+    echo ""
     echo "Examples:"
     echo "  $0                                              # Interactive setup"
     echo "  $0 --compiler /usr/bin/clang++-15              # Use specific compiler"
     echo "  $0 --compiler /home/user/compilers/gcc_15      # Use directory (finds g++ automatically)"
     echo "  $0 --cmake ~/cmake-4.3.0-linux-x86_64          # Use custom cmake installation"
+    echo "  $0 --ninja ~/tools/ninja                       # Use custom ninja binary"
     echo "  $0 --no-deps --compiler g++-12                 # Skip deps, use g++-12"
 }
 
@@ -1015,6 +1039,7 @@ parse_arguments() {
     YES_MODE=false
     CUSTOM_COMPILER=""
     CUSTOM_CMAKE=""
+    CUSTOM_NINJA=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -1024,6 +1049,10 @@ parse_arguments() {
                 ;;
             --cmake)
                 CUSTOM_CMAKE="$2"
+                shift 2
+                ;;
+            --ninja)
+                CUSTOM_NINJA="$2"
                 shift 2
                 ;;
             --no-deps)
