@@ -40,13 +40,15 @@ void CDependencyWindow::HandlePathProcessingResults()
 		{
 			case EPathType::DirectExecutable:
 			{
-				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Direct executable found for {}: {}", result.identifier, result.finalPath);
+				std::string const& version = !result.executables.empty() ? result.executables[0].version : "detected";
 
-				bool const success = g_dependencyManager.RegisterAdditionalVersion(result.identifier, result.finalPath, "detected");
+				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Direct executable found for {}: {} (v{})", result.identifier, result.finalPath, version);
+
+				bool const success = g_dependencyManager.RegisterAdditionalVersion(result.identifier, result.finalPath, version);
 
 				if (success)
 				{
-					gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {}", result.identifier, result.finalPath);
+					gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", result.identifier, result.finalPath, version);
 				}
 				else
 				{
