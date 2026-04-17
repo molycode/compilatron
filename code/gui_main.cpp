@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
 	}
 
 	int numExtraFrames{ 0 };
-	constexpr int ExtraFramesAfterEvent{ 3 };
+	constexpr int ExtraFramesAfterEvent{ 6 };
 
 	while (!glfwWindowShouldClose(window))
 	{
