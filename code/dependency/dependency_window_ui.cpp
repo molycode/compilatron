@@ -720,6 +720,7 @@ void CDependencyWindow::RenderExecutableSelectionPopup(std::string_view identifi
 
 					if (success)
 					{
+						m_columnWidthsDirty = true;
 						gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", identStr, selectedExe.path, selectedExe.version);
 					}
 					else
@@ -759,26 +760,26 @@ void CDependencyWindow::RecalculateColumnWidths()
 
 	for (auto const* dep : allDeps)
 	{
-		if (dep->status == EDependencyStatus::Available)
+		if (dep->foundLocations.empty())
 		{
-			if (dep->foundLocations.empty())
+			if (dep->status == EDependencyStatus::Available)
 			{
 				std::string_view const text{ "(auto-detected)" };
 				m_locationColumnWidth = std::max(m_locationColumnWidth,
 					ImGui::CalcTextSize(text.data(), text.data() + text.size()).x);
 			}
-			else
+		}
+		else
+		{
+			float const comboArrow{ dep->foundLocations.size() > 1 ? ImGui::GetFrameHeight() : 0.0f };
+
+			for (auto const& loc : dep->foundLocations)
 			{
-				float const comboArrow{ dep->foundLocations.size() > 1 ? ImGui::GetFrameHeight() : 0.0f };
+				m_locationColumnWidth = std::max(m_locationColumnWidth,
+					ImGui::CalcTextSize(loc.path.c_str()).x + comboArrow);
 
-				for (auto const& loc : dep->foundLocations)
-				{
-					m_locationColumnWidth = std::max(m_locationColumnWidth,
-						ImGui::CalcTextSize(loc.path.c_str()).x + comboArrow);
-
-					m_versionColumnWidth = std::max(m_versionColumnWidth,
-						ImGui::CalcTextSize(loc.version.c_str()).x);
-				}
+				m_versionColumnWidth = std::max(m_versionColumnWidth,
+					ImGui::CalcTextSize(loc.version.c_str()).x);
 			}
 		}
 	}

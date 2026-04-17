@@ -48,6 +48,7 @@ void CDependencyWindow::HandlePathProcessingResults()
 
 				if (success)
 				{
+					m_columnWidthsDirty = true;
 					gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", result.identifier, result.finalPath, version);
 				}
 				else
@@ -68,6 +69,7 @@ void CDependencyWindow::HandlePathProcessingResults()
 
 					if (success)
 					{
+						m_columnWidthsDirty = true;
 						gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", result.identifier, exe.path, exe.version);
 					}
 					else
