@@ -1834,20 +1834,12 @@ bool CDependencyManager::RegisterAdditionalVersion(std::string_view identifier, 
 					}
 				}
 
-				if (dep->status == EDependencyStatus::Missing && isWorking)
+				// Explicit user registration always selects the new path when working
+				if (isWorking)
 				{
 					dep->status = EDependencyStatus::Available;
 					dep->selectedLocation = &dep->foundLocations.back();
 					newBinaryDir = fs::path(executablePath).parent_path().string();
-				}
-				else if (dep->foundLocations.size() > 1 && dep->status == EDependencyStatus::Available)
-				{
-					dep->status = EDependencyStatus::MultipleFound;
-
-					if (isWorking)
-					{
-						newBinaryDir = fs::path(executablePath).parent_path().string();
-					}
 				}
 
 				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyManager: Registered additional version of '{}': {} ({}) - {}",
@@ -1856,7 +1848,24 @@ bool CDependencyManager::RegisterAdditionalVersion(std::string_view identifier, 
 			}
 			else
 			{
-				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyManager: Path '{}' already registered for dependency '{}'", executablePath, identifier);
+				// Path already registered — treat as success; re-select it if working
+				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyManager: Path '{}' already registered for dependency '{}' — re-selecting", executablePath, identifier);
+
+				for (auto& loc : dep->foundLocations)
+				{
+					if (loc.path == executablePath)
+					{
+						if (loc.isWorking)
+						{
+							dep->status = EDependencyStatus::Available;
+							dep->selectedLocation = &loc;
+							newBinaryDir = fs::path(executablePath).parent_path().string();
+						}
+						break;
+					}
+				}
+
+				success = true;
 			}
 		}
 		else
