@@ -12,6 +12,26 @@ if(NOT CYGWIN)
 	set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
+# Enforce minimum compiler versions required for C++23 (std::format, std::expected)
+if(CMAKE_CXX_COMPILER_ID MATCHES "[Cc]lang")
+	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19")
+		message(FATAL_ERROR
+			"Clang ${CMAKE_CXX_COMPILER_VERSION} is too old.\n"
+			"Compilatron requires Clang 19 or newer.\n"
+			"Reason: Clang 18 and earlier report __cpp_concepts=201907L, which prevents\n"
+			"        libstdc++ 13 from exposing std::expected (requires >= 202002L).\n"
+			"Tip: use CTRN_CLANG_PATH to point to a newer Clang installation.")
+	endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")
+		message(FATAL_ERROR
+			"GCC ${CMAKE_CXX_COMPILER_VERSION} is too old.\n"
+			"Compilatron requires GCC 13 or newer.\n"
+			"Reason: std::format is not available before GCC 13.\n"
+			"Tip: use CTRN_GCC_PATH to point to a newer GCC installation.")
+	endif()
+endif()
+
 # Compiler flags (warnings, pedantic, etc.)
 if(CMAKE_CXX_COMPILER_ID MATCHES "[Cc]lang")
 	include(cmake/compilers/clang.cmake)
