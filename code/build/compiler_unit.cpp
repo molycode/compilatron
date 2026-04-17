@@ -225,6 +225,7 @@ bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
 					if (chunk[found] == '\n')
 					{
 						m_unitLog.Info(Tge::Logging::ETarget::Console, partialLine);
+						RequestRedraw();
 					}
 				}
 
