@@ -61,4 +61,5 @@ target_compile_definitions(Compilatron PRIVATE
 # Place the binary at the build root regardless of CMakeLists.txt nesting
 set_target_properties(Compilatron PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+	OUTPUT_NAME compilatron
 )

@@ -8,7 +8,7 @@ tools/
 /build/
 
 # Compiled executables
-/Compilatron
+/compilatron
 
 # Downloaded/built dependencies
 dependencies/

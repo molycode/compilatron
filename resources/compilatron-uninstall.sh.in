@@ -27,7 +27,7 @@ remove_dir_if_empty()
 echo "Uninstalling Compilatron from $PREFIX ..."
 echo ""
 
-remove_file "$BINDIR/Compilatron"
+remove_file "$BINDIR/compilatron"
 remove_file "$BINDIR/compilatron/fonts/Roboto-Medium.ttf"
 remove_file "$BINDIR/compilatron/fonts/fa-solid-900.ttf"
 remove_dir_if_empty "$BINDIR/compilatron/fonts"

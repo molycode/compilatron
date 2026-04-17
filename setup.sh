@@ -33,6 +33,110 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Pinned versions for auto-download (update these on new releases)
+CMAKE_DOWNLOAD_VERSION="4.3.1"
+NINJA_DOWNLOAD_VERSION="1.12.1"
+
+# Download a URL to a destination file using curl or wget.
+download_file() {
+    local url="$1"
+    local dest="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL --progress-bar "$url" -o "$dest"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q --show-progress "$url" -O "$dest"
+    else
+        log_error "Neither curl nor wget is available — cannot download"
+        return 1
+    fi
+}
+
+# Extract a zip file to a destination directory using unzip or python3.
+extract_zip() {
+    local zip="$1"
+    local dest="$2"
+    if command -v unzip >/dev/null 2>&1; then
+        unzip -q "$zip" -d "$dest"
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c "import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$zip" "$dest"
+    else
+        log_error "Need unzip or python3 to extract $(basename "$zip")"
+        return 1
+    fi
+}
+
+# Download cmake CMAKE_DOWNLOAD_VERSION to tools/cmake/ and set CMAKE_EXEC.
+download_cmake() {
+    local arch
+    arch=$(uname -m)
+    local arch_tag=""
+
+    case "$arch" in
+        x86_64)  arch_tag="x86_64" ;;
+        aarch64) arch_tag="aarch64" ;;
+        *)
+            log_error "Automatic cmake download is not supported on $arch."
+            log_info "Download cmake manually from https://cmake.org/download/ then run:"
+            echo "    ./setup.sh --cmake /path/to/cmake"
+            exit 1
+            ;;
+    esac
+
+    local archive="cmake-${CMAKE_DOWNLOAD_VERSION}-linux-${arch_tag}.tar.gz"
+    local url="https://github.com/Kitware/CMake/releases/download/v${CMAKE_DOWNLOAD_VERSION}/${archive}"
+    local tools_dir="$SCRIPT_DIR/tools"
+
+    log_info "Downloading cmake ${CMAKE_DOWNLOAD_VERSION} (~62 MiB)..."
+    mkdir -p "$tools_dir"
+
+    if download_file "$url" "$tools_dir/$archive"; then
+        log_info "Extracting cmake..."
+        tar xf "$tools_dir/$archive" -C "$tools_dir"
+        rm -f "$tools_dir/$archive"
+        local cmake_bin
+        cmake_bin=$(find "$tools_dir" -maxdepth 3 -name cmake -path "*/bin/cmake" 2>/dev/null | head -1)
+        if [ -n "$cmake_bin" ] && cmake_version_ok "$cmake_bin"; then
+            local version
+            version=$("$cmake_bin" --version 2>/dev/null | head -1 | grep -oP '\d+\.\d+\.\d+' | head -1)
+            log_success "cmake ${version} downloaded to tools/"
+            CMAKE_EXEC="$cmake_bin"
+        else
+            log_error "Downloaded cmake not found or version check failed"
+            exit 1
+        fi
+    else
+        log_error "cmake download failed"
+        exit 1
+    fi
+}
+
+# Download ninja NINJA_DOWNLOAD_VERSION to tools/ninja/ and add it to PATH.
+download_ninja() {
+    if [ "$(uname -m)" != "x86_64" ]; then
+        log_error "Automatic ninja download is only available on x86_64."
+        log_info "Install ninja manually, then re-run setup.sh"
+        exit 1
+    fi
+
+    local tools_ninja="$SCRIPT_DIR/tools/ninja"
+    local url="https://github.com/ninja-build/ninja/releases/download/v${NINJA_DOWNLOAD_VERSION}/ninja-linux.zip"
+
+    log_info "Downloading ninja ${NINJA_DOWNLOAD_VERSION} (~131 KiB)..."
+    mkdir -p "$tools_ninja"
+
+    if download_file "$url" "$tools_ninja/ninja-linux.zip"; then
+        extract_zip "$tools_ninja/ninja-linux.zip" "$tools_ninja"
+        rm -f "$tools_ninja/ninja-linux.zip"
+        chmod +x "$tools_ninja/ninja"
+        export PATH="$tools_ninja:$PATH"
+        log_success "ninja downloaded to tools/ninja/"
+        log_info "To use outside of setup: export PATH=\"$tools_ninja:\$PATH\""
+    else
+        log_error "ninja download failed"
+        exit 1
+    fi
+}
+
 # Detect distribution
 detect_distro() {
     if [ -f /etc/os-release ]; then
@@ -96,6 +200,76 @@ install_packages() {
     esac
 }
 
+# Returns the distro-specific package name for ninja.
+ninja_pkg_name() {
+    case "$DISTRO" in
+        ubuntu|debian|fedora|centos|rhel|rocky|almalinux) echo "ninja-build" ;;
+        *) echo "ninja" ;;
+    esac
+}
+
+# Ensure ninja is available: check PATH, tools/, package manager, then offer download.
+ensure_ninja() {
+    echo ""
+    echo "NINJA:"
+    echo ""
+
+    # Already in PATH
+    if command_exists ninja; then
+        printf "  ${GREEN}✓${NC}  ninja  %s\n" "$(command -v ninja)"
+        return
+    fi
+
+    # Previously downloaded to tools/
+    if [ -x "$SCRIPT_DIR/tools/ninja/ninja" ]; then
+        export PATH="$SCRIPT_DIR/tools/ninja:$PATH"
+        printf "  ${GREEN}✓${NC}  ninja  %s\n" "$SCRIPT_DIR/tools/ninja/ninja"
+        return
+    fi
+
+    printf "  ${RED}✗${NC}  ninja  not found\n"
+    echo ""
+
+    if [ "$YES_MODE" = true ]; then
+        # Try package manager first, then auto-download
+        log_info "Non-interactive mode: installing ninja via package manager..."
+        install_packages "$(ninja_pkg_name)" 2>/dev/null || true
+        if command_exists ninja; then
+            log_success "ninja installed"
+            return
+        fi
+        log_info "Package manager install failed — downloading ninja ${NINJA_DOWNLOAD_VERSION}..."
+        download_ninja
+        return
+    fi
+
+    echo "  1. Install via package manager (requires sudo)"
+    echo "  2. Download ninja ${NINJA_DOWNLOAD_VERSION} binary (~131 KiB) to tools/ninja/"
+    echo "  3. Exit and install manually"
+    echo ""
+    read -p "Choose option (1-3): " -r
+
+    case "$REPLY" in
+        1)
+            install_packages "$(ninja_pkg_name)"
+            if ! command_exists ninja; then
+                log_warning "Package manager install failed — trying download..."
+                download_ninja
+            fi
+            ;;
+        2) download_ninja ;;
+        *)
+            log_error "ninja is required to build. Install it and re-run setup.sh."
+            exit 1
+            ;;
+    esac
+
+    if ! command_exists ninja; then
+        log_error "ninja is still not available — cannot continue"
+        exit 1
+    fi
+}
+
 # Check required packages, display status table, install any missing ones or exit.
 check_and_install_dependencies() {
     local packages=()
@@ -104,29 +278,29 @@ check_and_install_dependencies() {
 
     case "$DISTRO" in
         ubuntu|debian)
-            packages=(ninja-build   pkg-config   libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev)
-            binaries=(ninja         pkg-config   ""              ""         ""            ""              ""             ""       )
+            packages=(pkg-config   libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev)
+            binaries=(pkg-config   ""              ""         ""            ""              ""             ""       )
             pkg_mgr_hint="sudo apt install"
             ;;
         fedora|centos|rhel|rocky|almalinux)
-            packages=(ninja-build   mesa-libGL-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel)
-            binaries=(ninja         ""               ""           ""              ""                ""              ""          )
+            packages=(mesa-libGL-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel)
+            binaries=(""               ""           ""              ""                ""              ""          )
             local mgr="dnf"; command_exists dnf || mgr="yum"
             pkg_mgr_hint="sudo $mgr install"
             ;;
         opensuse*|suse)
-            packages=(ninja         pkg-config   Mesa-libGL-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel)
-            binaries=(ninja         pkg-config   ""               ""           ""              ""                ""              ""          )
+            packages=(pkg-config   Mesa-libGL-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel)
+            binaries=(pkg-config   ""               ""           ""              ""                ""              ""          )
             pkg_mgr_hint="sudo zypper install"
             ;;
         arch|manjaro)
-            packages=(ninja         mesa libx11 libxrandr libxinerama libxcursor libxi)
-            binaries=(ninja         ""   ""     ""        ""           ""         ""  )
+            packages=(mesa libx11 libxrandr libxinerama libxcursor libxi)
+            binaries=(""   ""     ""        ""           ""         ""  )
             pkg_mgr_hint="sudo pacman -S"
             ;;
         *)
             log_warning "Unsupported distribution: $DISTRO — skipping dependency check"
-            log_info "Ensure these are installed manually: ninja, OpenGL dev headers, X11 dev headers"
+            log_info "Ensure these are installed manually: OpenGL dev headers, X11 dev headers"
             return
             ;;
     esac
@@ -162,8 +336,14 @@ check_and_install_dependencies() {
     else
         log_warning "${#missing[@]} package(s) missing"
         echo ""
-        read -p "Install missing packages now? (Y/n): " -r
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        local do_install=true
+        if [ "$YES_MODE" = false ]; then
+            read -p "Install missing packages now? (Y/n): " -r
+            if [[ $REPLY =~ ^[Nn]$ ]]; then
+                do_install=false
+            fi
+        fi
+        if [ "$do_install" = true ]; then
             install_packages "${missing[@]}"
             log_success "Dependencies installed"
         else
@@ -262,6 +442,7 @@ find_cmake() {
     # Search common non-system locations for a newer cmake
     log_info "Searching for cmake ${CMAKE_MIN_MAJOR}.${CMAKE_MIN_MINOR}.${CMAKE_MIN_PATCH}+ in common locations..."
     local search_patterns=(
+        "$SCRIPT_DIR/tools/cmake*/bin/cmake"
         "$HOME/cmake-*/bin/cmake"
         "$HOME/.local/cmake-*/bin/cmake"
         "/opt/cmake*/bin/cmake"
@@ -281,20 +462,31 @@ find_cmake() {
         done
     done
 
-    # Nothing usable found
+    # Nothing usable found — offer to download before exiting
     log_error "No cmake ${CMAKE_MIN_MAJOR}.${CMAKE_MIN_MINOR}.${CMAKE_MIN_PATCH}+ found!"
     echo ""
     echo "Compilatron requires CMake ${CMAKE_MIN_MAJOR}.${CMAKE_MIN_MINOR}.${CMAKE_MIN_PATCH} or newer."
-    echo "Your system cmake is too old or not installed."
     echo ""
-    echo "Options:"
-    echo "  1. Download cmake from https://cmake.org/download/ and point setup.sh to it:"
-    echo "       wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0-linux-x86_64.tar.gz"
-    echo "       tar xf cmake-4.3.0-linux-x86_64.tar.gz -C ~"
-    echo "       ./setup.sh --cmake ~/cmake-4.3.0-linux-x86_64"
+
+    if [ "$YES_MODE" = true ]; then
+        log_info "Non-interactive mode: downloading cmake ${CMAKE_DOWNLOAD_VERSION}..."
+        download_cmake
+        return
+    fi
+
+    echo "  1. Download cmake ${CMAKE_DOWNLOAD_VERSION} automatically to tools/cmake/  (recommended)"
+    echo "  2. Point to an existing cmake:  ./setup.sh --cmake /path/to/cmake"
+    echo "  3. Download manually from https://cmake.org/download/"
     echo ""
-    echo "  2. Use --cmake to point to an existing installation:"
-    echo "       ./setup.sh --cmake /path/to/cmake-4.3.0-linux-x86_64"
+    read -p "Download cmake ${CMAKE_DOWNLOAD_VERSION} now? (Y/n): " -r
+    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        download_cmake
+        return
+    fi
+
+    echo ""
+    log_info "Re-run with --cmake once you have a suitable installation:"
+    echo "    ./setup.sh --cmake /path/to/cmake-${CMAKE_DOWNLOAD_VERSION}-linux-x86_64"
     echo ""
     exit 1
 }
@@ -530,13 +722,19 @@ warn_if_runtime_mismatch() {
         echo ""
         log_warning "Compiler libstdc++ ($compiler_max) is newer than the system libstdc++ ($system_max)."
         log_warning "Compilatron will fail to run on this machine without the newer libstdc++ at runtime."
+        log_warning "Pass --static to produce a self-contained binary that avoids this."
         echo ""
-        read -p "Enable static linking to produce a self-contained binary? (Y/n): " -r
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        if [ "$YES_MODE" = true ]; then
             STATIC_BUILD=true
-            log_success "Static linking enabled"
+            log_info "Non-interactive mode: enabling static linking automatically"
         else
-            log_info "Continuing without static linking"
+            read -p "Enable static linking to produce a self-contained binary? (Y/n): " -r
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                STATIC_BUILD=true
+                log_success "Static linking enabled"
+            else
+                log_info "Continuing without static linking"
+            fi
         fi
         echo ""
     fi
@@ -614,6 +812,22 @@ select_compiler() {
     # Group compilers by suite
     group_compiler_suites
 
+    # Non-interactive: auto-select first detected compiler
+    if [ "$YES_MODE" = true ]; then
+        if [ ${#COMPILER_SUITES[@]} -gt 0 ]; then
+            local selected_suite="${COMPILER_SUITES[0]}"
+            COMPILER_EXEC="${SUITE_COMPILER_MAP[$selected_suite]}"
+            log_info "Non-interactive mode: selected $selected_suite"
+            return
+        elif [ -n "$COMPILERS" ]; then
+            COMPILER_EXEC=$(echo "$COMPILERS" | awk '{print $1}')
+            log_info "Non-interactive mode: selected $COMPILER_EXEC"
+            return
+        fi
+        log_error "No C++23 compiler detected — use --compiler to specify one"
+        exit 1
+    fi
+
     echo ""
     echo "COMPILER SELECTION:"
     echo ""
@@ -681,6 +895,11 @@ select_compiler() {
 post_build_prompt() {
     local bin="$1"
 
+    if [ "$YES_MODE" = true ]; then
+        log_success "Binary available at: $bin"
+        return
+    fi
+
     echo ""
     echo "WHAT WOULD YOU LIKE TO DO?"
     echo ""
@@ -739,7 +958,12 @@ post_build_prompt() {
             if $install_cmd; then
                 log_success "Installed to $prefix"
                 log_info "To uninstall: right-click the app icon, or run compilatron-uninstall"
-                bin="$prefix/bin/Compilatron"
+                if [ "$prefix" = "$HOME/.local" ] && [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+                    echo ""
+                    log_info "Note: ~/.local/bin is not in your PATH. Add this to ~/.bashrc or ~/.profile:"
+                    echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+                fi
+                bin="$prefix/bin/compilatron"
             else
                 log_error "Install failed"
                 do_run=false
@@ -763,6 +987,7 @@ show_usage() {
     echo "  --no-deps         Skip dependency installation"
     echo "  --no-build        Skip building step"
     echo "  --static          Link libstdc++ statically (recommended with custom compilers)"
+    echo "  -y, --yes         Non-interactive mode: answer yes to all prompts and use defaults"
     echo "  --help            Show this help"
     echo ""
     echo "Compiler PATH can be:"
@@ -787,6 +1012,7 @@ parse_arguments() {
     SKIP_DEPS=false
     SKIP_BUILD=false
     STATIC_BUILD=false
+    YES_MODE=false
     CUSTOM_COMPILER=""
     CUSTOM_CMAKE=""
 
@@ -812,6 +1038,10 @@ parse_arguments() {
                 STATIC_BUILD=true
                 shift
                 ;;
+            -y|--yes)
+                YES_MODE=true
+                shift
+                ;;
             --help)
                 show_usage
                 exit 0
@@ -830,10 +1060,20 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
 
+    # Auto-detect non-interactive environments (piped stdin, CI, etc.)
+    if [ ! -t 0 ] && [ "$YES_MODE" = false ]; then
+        YES_MODE=true
+    fi
+
     echo "=========================================="
     echo "    Compilatron Setup"
     echo "=========================================="
     echo ""
+
+    if [ "$YES_MODE" = true ]; then
+        log_info "Non-interactive mode: using defaults for all prompts"
+        echo ""
+    fi
 
     # Detect system
     detect_distro
@@ -862,6 +1102,9 @@ main() {
         check_and_install_dependencies
     fi
 
+    # Ninja is always required for the build regardless of --no-deps
+    ensure_ninja
+
     # Handle build
     if [ "$SKIP_BUILD" = true ]; then
         log_info "Skipping build (--no-build specified)"
@@ -878,8 +1121,14 @@ main() {
         fi
         echo ""
         echo "Using compiler: $COMPILER_EXEC"
-        read -p "Build Compilatron now? (Y/n): " -r
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        local do_build=true
+        if [ "$YES_MODE" = false ]; then
+            read -p "Build Compilatron now? (Y/n): " -r
+            if [[ $REPLY =~ ^[Nn]$ ]]; then
+                do_build=false
+            fi
+        fi
+        if [ "$do_build" = true ]; then
             log_info "Building Compilatron..."
             echo ""
             STATIC_OVERRIDE=""
@@ -905,7 +1154,7 @@ main() {
                 || { log_error "CMake configuration failed"; exit 1; }
             if make $CMAKE_OVERRIDE $COMPILER_OVERRIDE $STATIC_OVERRIDE; then
                 log_success "Build completed successfully!"
-                BUILT_BIN=$(find build/ -maxdepth 2 -name "Compilatron" -type f 2>/dev/null | head -1)
+                BUILT_BIN=$(find build/ -maxdepth 2 -name "compilatron" -type f 2>/dev/null | head -1)
                 if [ -n "$BUILT_BIN" ]; then
                     post_build_prompt "$BUILT_BIN"
                 fi
@@ -920,7 +1169,7 @@ main() {
 
     echo ""
     log_success "Setup completed!"
-    FINAL_BIN=$(find build/ -maxdepth 2 -name "Compilatron" -type f 2>/dev/null | head -1)
+    FINAL_BIN=$(find build/ -maxdepth 2 -name "compilatron" -type f 2>/dev/null | head -1)
     if [ -z "$FINAL_BIN" ]; then
         log_info "To build:      make"
         log_info "To install:    make install CMAKE_INSTALL_PREFIX=~/.local"
