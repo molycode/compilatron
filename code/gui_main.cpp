@@ -290,6 +290,14 @@ int main(int argc, char* argv[])
 		// No multi-viewport support in this ImGui version
 
 		glfwSwapBuffers(window);
+
+		// Keep rendering while ImGui has open popups or active items — covers modal overlay
+		// fade animations and any other time-based transitions that outlast the event counter.
+		if (ImGui::IsAnyItemActive() ||
+		    ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
+		{
+			Ctrn::RequestRedraw();
+		}
 	}
 
 	// Save window state before cleanup
