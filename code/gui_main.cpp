@@ -248,11 +248,9 @@ int main(int argc, char* argv[])
 
 		Tge::Logging::GetLogSystem().DispatchListeners();
 
-		auto const t0{ std::chrono::steady_clock::now() };
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		auto const t1{ std::chrono::steady_clock::now() };
 
 		if (depDialog)
 		{
@@ -281,7 +279,6 @@ int main(int argc, char* argv[])
 			ImGui::End();
 		}
 
-		auto const t2{ std::chrono::steady_clock::now() };
 		ImGui::Render();
 
 		int displayWidth, displayHeight;
@@ -289,26 +286,11 @@ int main(int argc, char* argv[])
 		glViewport(0, 0, displayWidth, displayHeight);
 		glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		auto const t3{ std::chrono::steady_clock::now() };
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		auto const t4{ std::chrono::steady_clock::now() };
 
 		// No multi-viewport support in this ImGui version
 
-		auto const t5{ std::chrono::steady_clock::now() };
 		glfwSwapBuffers(window);
-		auto const t6{ std::chrono::steady_clock::now() };
-
-		static auto lastFrameLog{ std::chrono::steady_clock::now() };
-
-		if (t6 - lastFrameLog >= std::chrono::seconds(3))
-		{
-			auto us = [](auto a, auto b) { return std::chrono::duration_cast<std::chrono::microseconds>(b - a).count(); };
-			Ctrn::gLog.Info(Tge::Logging::ETarget::File,
-				"Frame timing (us): newFrame={} render={} imguiRender={} glDraw={} swap={}",
-				us(t0, t1), us(t1, t2), us(t2, t3), us(t3, t4), us(t5, t6));
-			lastFrameLog = t6;
-		}
 
 		// Keep rendering while ImGui has open popups or active items — covers modal overlay
 		// fade animations and any other time-based transitions that outlast the event counter.
