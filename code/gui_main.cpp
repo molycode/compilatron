@@ -328,9 +328,8 @@ int main(int argc, char* argv[])
 		bool const animating{ (lastRenderTime - lastActivityTime) < 0.2 };
 
 		// Only wait for tooltip delay when something is actually hovered.
-		bool const hasHoveredItem{ ImGui::GetHoveredID() != 0 };
-		bool const tooltipPending{ hasHoveredItem &&
-		    (lastRenderTime - lastMouseMoveTime) < (static_cast<double>(io.HoverDelayNormal) + 0.05) };
+		bool const tooltipPending{ ImGui::IsAnyItemHovered() &&
+		    (lastRenderTime - lastMouseMoveTime) < (static_cast<double>(ImGui::GetStyle().HoverDelayNormal) + 0.05) };
 
 		wantsRender = mouseMoved || animating || tooltipPending;
 	}
