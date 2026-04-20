@@ -1005,6 +1005,7 @@ show_usage() {
     echo "  --ninja PATH       Use specific ninja binary or directory"
     echo "  --no-deps         Skip dependency installation"
     echo "  --no-build        Skip building step"
+    echo "  --install-only    Install an already-built binary (skips deps and build)"
     echo "  --static          Link libstdc++ statically (recommended with custom compilers)"
     echo "  -y, --yes         Non-interactive mode: answer yes to all prompts and use defaults"
     echo "  --help            Show this help"
@@ -1035,6 +1036,7 @@ show_usage() {
 parse_arguments() {
     SKIP_DEPS=false
     SKIP_BUILD=false
+    INSTALL_ONLY=false
     STATIC_BUILD=false
     YES_MODE=false
     CUSTOM_COMPILER=""
@@ -1061,6 +1063,10 @@ parse_arguments() {
                 ;;
             --no-build)
                 SKIP_BUILD=true
+                shift
+                ;;
+            --install-only)
+                INSTALL_ONLY=true
                 shift
                 ;;
             --static)
@@ -1092,6 +1098,19 @@ main() {
     # Auto-detect non-interactive environments (piped stdin, CI, etc.)
     if [ ! -t 0 ] && [ "$YES_MODE" = false ]; then
         YES_MODE=true
+    fi
+
+    if [ "$INSTALL_ONLY" = true ]; then
+        BUILT_BIN=$(find build/ -maxdepth 2 -name "compilatron" -type f 2>/dev/null | head -1)
+        if [ -z "$BUILT_BIN" ]; then
+            log_error "No built binary found in build/ — run setup.sh first to build Compilatron"
+            exit 1
+        fi
+        find_cmake "$CUSTOM_CMAKE"
+        CMAKE_OVERRIDE="CMAKE=$CMAKE_EXEC"
+        post_build_prompt "$BUILT_BIN"
+        log_success "Done!"
+        exit 0
     fi
 
     echo "=========================================="
