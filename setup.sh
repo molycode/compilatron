@@ -1107,9 +1107,13 @@ main() {
             exit 1
         fi
         # cmake --install only needs cmake 3.15+ — no version gate required.
-        CMAKE_EXEC=$(command -v cmake 2>/dev/null || true)
-        if [ -z "$CMAKE_EXEC" ]; then
-            log_error "cmake not found in PATH — cannot install"
+        if [ -n "$CUSTOM_CMAKE" ]; then
+            CMAKE_EXEC="$CUSTOM_CMAKE"
+        else
+            CMAKE_EXEC=$(command -v cmake 2>/dev/null || true)
+        fi
+        if [ -z "$CMAKE_EXEC" ] || [ ! -x "$CMAKE_EXEC" ]; then
+            log_error "cmake not found — cannot install"
             exit 1
         fi
         CMAKE_OVERRIDE="CMAKE=$CMAKE_EXEC"
