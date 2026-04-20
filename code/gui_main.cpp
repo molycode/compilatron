@@ -217,22 +217,37 @@ int main(int argc, char* argv[])
 		mainGui->Initialize();
 	}
 
-	int numExtraFrames{ 0 };
-	constexpr int ExtraFramesAfterEvent{ 6 };
 	constexpr double ActiveFrameInterval{ 1.0 / 30.0 };
+	double lastRenderTime{ glfwGetTime() - ActiveFrameInterval };
+	bool wantsRender{ false };
 
 	while (!glfwWindowShouldClose(window))
 	{
-		if (numExtraFrames > 0)
+		if (wantsRender)
 		{
-			glfwWaitEventsTimeout(ActiveFrameInterval);
-			numExtraFrames--;
+			double const remaining{ ActiveFrameInterval - (glfwGetTime() - lastRenderTime) };
+
+			if (remaining > 0.001)
+			{
+				glfwWaitEventsTimeout(remaining);
+			}
+			else
+			{
+				glfwPollEvents();
+			}
 		}
 		else
 		{
 			glfwWaitEvents();
-			numExtraFrames = ExtraFramesAfterEvent;
+			wantsRender = true;
 		}
+
+		if ((glfwGetTime() - lastRenderTime) < (ActiveFrameInterval - 0.001))
+		{
+			continue;
+		}
+
+		lastRenderTime = glfwGetTime();
 
 		// Handle window resize requests from other parts of the application
 		if (Ctrn::g_mainWindowNeedsResize.load())
@@ -294,11 +309,8 @@ int main(int argc, char* argv[])
 
 		// Keep rendering while ImGui has open popups or active items — covers modal overlay
 		// fade animations and any other time-based transitions that outlast the event counter.
-		if (ImGui::IsAnyItemActive() ||
-		    ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
-		{
-			Ctrn::RequestRedraw();
-		}
+		wantsRender = ImGui::IsAnyItemActive() ||
+		    ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
 	}
 
 	// Save window state before cleanup
