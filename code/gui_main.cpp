@@ -219,6 +219,7 @@ int main(int argc, char* argv[])
 
 	constexpr double ActiveFrameInterval{ 1.0 / 30.0 };
 	double lastRenderTime{ glfwGetTime() - ActiveFrameInterval };
+	double lastMouseMoveTime{ 0.0 };
 	bool wantsRender{ false };
 
 	while (!glfwWindowShouldClose(window))
@@ -307,9 +308,21 @@ int main(int argc, char* argv[])
 
 		glfwSwapBuffers(window);
 
-		// Keep rendering while ImGui has open popups or active items — covers modal overlay
-		// fade animations and any other time-based transitions that outlast the event counter.
-		wantsRender = ImGui::IsAnyItemActive() ||
+		ImGuiIO const& io{ ImGui::GetIO() };
+		bool const mouseMoved{ io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f };
+
+		if (mouseMoved)
+		{
+			lastMouseMoveTime = lastRenderTime;
+		}
+
+		// After the mouse stops, keep rendering long enough for tooltip delays to expire
+		// so pending tooltips have a chance to appear before we go idle.
+		bool const tooltipPending{ (lastRenderTime - lastMouseMoveTime) < (static_cast<double>(io.HoverDelayNormal) + 0.05) };
+
+		wantsRender = mouseMoved ||
+		    tooltipPending ||
+		    ImGui::IsAnyItemActive() ||
 		    ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
 	}
 
