@@ -1106,9 +1106,22 @@ main() {
             log_error "No built binary found in build/ — run setup.sh first to build Compilatron"
             exit 1
         fi
+
         # cmake --install only needs cmake 3.15+ — no version gate required.
+        # Resolve directory to binary if needed.
         if [ -n "$CUSTOM_CMAKE" ]; then
-            CMAKE_EXEC="$CUSTOM_CMAKE"
+            if [ -d "$CUSTOM_CMAKE" ]; then
+                if [ -x "$CUSTOM_CMAKE/bin/cmake" ]; then
+                    CMAKE_EXEC="$CUSTOM_CMAKE/bin/cmake"
+                elif [ -x "$CUSTOM_CMAKE/cmake" ]; then
+                    CMAKE_EXEC="$CUSTOM_CMAKE/cmake"
+                else
+                    log_error "cmake binary not found in: $CUSTOM_CMAKE"
+                    exit 1
+                fi
+            else
+                CMAKE_EXEC="$CUSTOM_CMAKE"
+            fi
         else
             CMAKE_EXEC=$(command -v cmake 2>/dev/null || true)
         fi
@@ -1116,8 +1129,55 @@ main() {
             log_error "cmake not found — cannot install"
             exit 1
         fi
-        CMAKE_OVERRIDE="CMAKE=$CMAKE_EXEC"
-        post_build_prompt "$BUILT_BIN"
+
+        BUILD_DIR=$(dirname "$BUILT_BIN")
+
+        echo ""
+        echo "INSTALL LOCATION:"
+        echo ""
+        echo "  1. Current user only  (~/.local)  — no sudo required  (recommended)"
+        echo "  2. System-wide        (/usr/local) — requires sudo"
+        echo "  3. Custom path"
+        echo ""
+        read -p "Choose option (1-3): " -r
+
+        local prefix=""
+        case "$REPLY" in
+            1) prefix="$HOME/.local" ;;
+            2) prefix="/usr/local" ;;
+            3)
+                echo ""
+                read -p "Enter install prefix: " -r prefix
+                prefix=$(echo "$prefix" | sed "s/^['\"]//;s/['\"]$//")
+                if [ -z "$prefix" ]; then
+                    log_error "Empty path — skipping install"
+                    exit 1
+                fi
+                ;;
+            *)
+                log_info "Skipping install"
+                exit 0
+                ;;
+        esac
+
+        log_info "Installing to $prefix..."
+        local install_cmd="\"$CMAKE_EXEC\" --install \"$BUILD_DIR\" --prefix \"$prefix\""
+        if [ "$prefix" = "/usr/local" ]; then
+            install_cmd="sudo $install_cmd"
+        fi
+        if eval $install_cmd; then
+            log_success "Installed to $prefix"
+            log_info "To uninstall: right-click the app icon, or run compilatron-uninstall"
+            if [ "$prefix" = "$HOME/.local" ] && [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+                echo ""
+                log_info "Note: ~/.local/bin is not in your PATH. Add this to ~/.bashrc or ~/.profile:"
+                echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+            fi
+        else
+            log_error "Install failed"
+            exit 1
+        fi
+
         log_success "Done!"
         exit 0
     fi
