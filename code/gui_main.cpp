@@ -220,6 +220,7 @@ int main(int argc, char* argv[])
 	constexpr double ActiveFrameInterval{ 1.0 / 30.0 };
 	double lastRenderTime{ glfwGetTime() - ActiveFrameInterval };
 	double lastMouseMoveTime{ 0.0 };
+	double lastActivityTime{ 0.0 };
 	bool wantsRender{ false };
 
 	while (!glfwWindowShouldClose(window))
@@ -310,20 +311,28 @@ int main(int argc, char* argv[])
 
 		ImGuiIO const& io{ ImGui::GetIO() };
 		bool const mouseMoved{ io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f };
+		bool const hasActivity{ ImGui::IsAnyItemActive() ||
+		    ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) };
+
+		if (mouseMoved || hasActivity)
+		{
+			lastActivityTime = lastRenderTime;
+		}
 
 		if (mouseMoved)
 		{
 			lastMouseMoveTime = lastRenderTime;
 		}
 
-		// After the mouse stops, keep rendering long enough for tooltip delays to expire
-		// so pending tooltips have a chance to appear before we go idle.
-		bool const tooltipPending{ (lastRenderTime - lastMouseMoveTime) < (static_cast<double>(io.HoverDelayNormal) + 0.05) };
+		// DimBgRatio fades in at 6/s (~167ms) and out at 10/s (~100ms) — 200ms covers both.
+		bool const animating{ (lastRenderTime - lastActivityTime) < 0.2 };
 
-		wantsRender = mouseMoved ||
-		    tooltipPending ||
-		    ImGui::IsAnyItemActive() ||
-		    ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+		// Only wait for tooltip delay when something is actually hovered.
+		bool const hasHoveredItem{ ImGui::GetHoveredID() != 0 };
+		bool const tooltipPending{ hasHoveredItem &&
+		    (lastRenderTime - lastMouseMoveTime) < (static_cast<double>(io.HoverDelayNormal) + 0.05) };
+
+		wantsRender = mouseMoved || animating || tooltipPending;
 	}
 
 	// Save window state before cleanup
