@@ -232,43 +232,6 @@ bool CPresetManager::SavePreset(std::string_view name, std::string_view descript
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CPresetManager::ParsePreset(std::string_view name, SBuildSettings& settings) const
-{
-	bool result{ false };
-	std::string const filePath{ GetPresetFilePath(name) };
-
-	if (!std::filesystem::exists(filePath))
-	{
-		gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: ParsePreset failed: preset '{}' not found", name);
-	}
-	else
-	{
-		std::ifstream file(filePath);
-
-		if (!file.is_open())
-		{
-			gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: ParsePreset: failed to open '{}'", filePath);
-		}
-		else
-		{
-			auto parsed = nlohmann::json::parse(file, nullptr, false);
-
-			if (parsed.is_discarded())
-			{
-				gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: ParsePreset: invalid JSON in '{}'", filePath);
-			}
-			else
-			{
-				PopulateFromJson(parsed, settings);
-				result = true;
-			}
-		}
-	}
-
-	return result;
-}
-
-//////////////////////////////////////////////////////////////////////////
 bool CPresetManager::LoadPreset(std::string_view name, SBuildSettings& settings)
 {
 	gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Loading preset: {}", name);

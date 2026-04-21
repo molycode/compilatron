@@ -16,7 +16,6 @@ public:
 
 	[[nodiscard]] bool SavePreset(std::string_view name, std::string_view description, SBuildSettings& settings);
 	[[nodiscard]] bool LoadPreset(std::string_view name, SBuildSettings& settings);
-	[[nodiscard]] bool ParsePreset(std::string_view name, SBuildSettings& settings) const;
 	[[nodiscard]] bool DeletePreset(std::string_view name);
 	[[nodiscard]] bool RenamePreset(std::string_view oldName, std::string_view newName);
 	std::vector<std::string> GetPresetNames() const;
