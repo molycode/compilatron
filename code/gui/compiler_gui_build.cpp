@@ -273,7 +273,7 @@ void CCompilerGUI::DeleteCompilerSources(SCompilerTab const& tab)
 {
 	namespace fs = std::filesystem;
 
-	std::string sourcesPath{ "./sources/" + tab.folderName };
+	std::string sourcesPath{ g_dataDir + "/sources/" + tab.folderName };
 
 	if (fs::exists(sourcesPath))
 	{
@@ -302,7 +302,7 @@ void CCompilerGUI::DeleteCompilerBuild(SCompilerTab const& tab)
 {
 	namespace fs = std::filesystem;
 
-	std::string buildPath{ "./build_compilers/" + tab.folderName };
+	std::string buildPath{ g_dataDir + "/build_compilers/" + tab.folderName };
 
 	if (fs::exists(buildPath))
 	{

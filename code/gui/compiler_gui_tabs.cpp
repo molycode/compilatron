@@ -599,7 +599,7 @@ void CCompilerGUI::RenderDeleteButtons(SCompilerTab const& tab, bool isBuilding)
 void CCompilerGUI::RenderDeleteSourcesButton(SCompilerTab const& tab, bool isBuilding)
 {
 
-	std::string sourcesPath{ "./sources/" + tab.folderName };
+	std::string sourcesPath{ g_dataDir + "/sources/" + tab.folderName };
 	bool sourcesExist{ std::filesystem::exists(sourcesPath) };
 
 	bool sourcesButtonEnabled{ sourcesExist && !isBuilding };
@@ -703,7 +703,7 @@ void CCompilerGUI::RenderDeleteSourcesButton(SCompilerTab const& tab, bool isBui
 void CCompilerGUI::RenderDeleteBuildButton(SCompilerTab const& tab, bool isBuilding)
 {
 
-	std::string buildPath{ "./build_compilers/" + tab.folderName };
+	std::string buildPath{ g_dataDir + "/build_compilers/" + tab.folderName };
 	bool buildExists{ std::filesystem::exists(buildPath) };
 
 	bool buildButtonEnabled{ buildExists && !isBuilding };
