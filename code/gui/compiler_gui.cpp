@@ -36,24 +36,32 @@ void CCompilerGUI::Initialize()
 	m_compilerBuilder->Initialize();
 	m_versionManager.Initialize();
 
-	m_currentPresetName = m_presetManager.GetLastUsedPreset();
+	m_currentPresetName = g_stateManager.GetActivePreset();
 
-	if (!m_currentPresetName.empty())
+	if (m_currentPresetName.empty())
+	{
+		m_currentPresetName = "Default";
+		g_stateManager.SetActivePreset("Default");
+	}
+
 	{
 		SBuildSettings loadedSettings;
 
-		if (!m_presetManager.LoadPreset(m_currentPresetName, loadedSettings))
-		{
-			m_currentPresetName.clear();
-		}
-		else
+		if (m_presetManager.LoadPreset(m_currentPresetName, loadedSettings))
 		{
 			g_buildSettings.installDirectory = loadedSettings.installDirectory;
 			g_buildSettings.globalHostCompiler = loadedSettings.globalHostCompiler;
 			g_buildSettings.dependencyLocationSelections = loadedSettings.dependencyLocationSelections;
 			CreateTabsFromBuildSettings(loadedSettings);
-			m_savedPresetSnapshot = loadedSettings;
-			m_needsPresetLocationReload = true;
+		}
+		else
+		{
+			gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Creating preset '{}'", m_currentPresetName);
+
+			if (!m_presetManager.SavePreset(m_currentPresetName, "", loadedSettings))
+			{
+				gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Failed to create preset '{}'", m_currentPresetName);
+			}
 		}
 	}
 
@@ -63,12 +71,6 @@ void CCompilerGUI::Initialize()
 
 	// Initialize dependency manager (deferred from static construction)
 	g_dependencyManager.InitializeAllDependencies();
-
-	if (!g_dependencyManager.LoadConfiguration())
-	{
-		gLog.Warning(Tge::Logging::ETarget::Console, "Failed to load dependency manager configuration");
-	}
-
 	g_dependencyManager.ScanAllDependencies();
 
 	// Raw format: Console colors carry level signal; timestamp + message is sufficient
@@ -81,13 +83,7 @@ void CCompilerGUI::Initialize()
 	RefreshPresetNames();
 
 	g_dependencyWindow.Initialize();
-
-	// If we loaded a preset at startup, reload dependency locations now that scanning is complete
-	if (m_needsPresetLocationReload)
-	{
-		g_dependencyWindow.LoadLocationSelectionsFromPresets();
-		m_needsPresetLocationReload = false;
-	}
+	g_dependencyWindow.LoadLocationSelectionsFromPresets();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -323,18 +319,6 @@ void CCompilerGUI::RenderMainPanel()
 	RenderGlobalLogPanel();
 
 	ImGui::End();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCompilerGUI::SaveWindowState(int x, int y, int width, int height)
-{
-	m_presetManager.SaveWindowState(x, y, width, height);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerGUI::LoadWindowState() const
-{
-	return m_presetManager.LoadWindowState();
 }
 
 //////////////////////////////////////////////////////////////////////////

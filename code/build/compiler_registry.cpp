@@ -3,6 +3,8 @@
 #include "common/loggers.hpp"
 #include "common/process_executor.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <filesystem>
 #include <format>
@@ -116,7 +118,7 @@ ECompilerKind KindFromFilename(std::string_view filename)
 //////////////////////////////////////////////////////////////////////////
 void CCompilerRegistry::Initialize()
 {
-	m_configFilePath = g_dataDir + "/compiler_registry.ini";
+	m_configFilePath = g_dataDir + "/config/config.json";
 	LoadConfig();
 }
 
@@ -332,31 +334,15 @@ bool CCompilerRegistry::LoadConfig()
 
 		if (file.is_open())
 		{
-			std::string line;
-			bool inCompilersSection{ false };
+			auto parsed = nlohmann::json::parse(file, nullptr, false);
 
-			while (std::getline(file, line))
+			if (!parsed.is_discarded() && parsed.contains("customCompilers") && parsed["customCompilers"].is_array())
 			{
-				if (!line.empty() && line[0] != '#')
+				for (auto const& entry : parsed["customCompilers"])
 				{
-					if (line[0] == '[' && line.back() == ']')
+					if (entry.is_string())
 					{
-						inCompilersSection = (line == "[Compilers]");
-					}
-					else if (inCompilersSection)
-					{
-						size_t const equalPos{ line.find('=') };
-
-						if (equalPos != std::string::npos)
-						{
-							std::string_view const key{ line.data(), equalPos };
-							std::string_view const value{ line.data() + equalPos + 1 };
-
-							if (key == "path" && !value.empty())
-							{
-								AddCompiler(value);
-							}
-						}
+						AddCompiler(entry.get<std::string>());
 					}
 				}
 			}
@@ -378,22 +364,26 @@ bool CCompilerRegistry::LoadConfig()
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerRegistry::SaveConfig()
 {
+	std::error_code ec;
+	fs::create_directories(fs::path(m_configFilePath).parent_path(), ec);
+
 	std::ofstream file(m_configFilePath);
 	bool success{ file.is_open() };
 
 	if (success)
 	{
-		file << "# Compilatron Compiler Registry\n";
-		file << "# Stores custom (non-system) compiler paths — edit with care\n\n";
-		file << "[Compilers]\n";
+		nlohmann::json config;
+		config["customCompilers"] = nlohmann::json::array();
 
 		for (auto const& c : m_compilers)
 		{
 			if (c.isRemovable)
 			{
-				file << "path=" << c.path << "\n";
+				config["customCompilers"].push_back(c.path);
 			}
 		}
+
+		file << config.dump(2) << "\n";
 
 		gLog.Info(Tge::Logging::ETarget::File,
 			"CompilerRegistry: Saved config to {}", m_configFilePath);

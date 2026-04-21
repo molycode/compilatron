@@ -1,6 +1,5 @@
 #include "dependency/dependency_window.hpp"
 #include "dependency/dependency_manager.hpp"
-#include "gui/preset_manager.hpp"
 #include "common/common.hpp"
 #include "common/loggers.hpp"
 #include "common/process_executor.hpp"
@@ -49,6 +48,7 @@ void CDependencyWindow::HandlePathProcessingResults()
 				if (success)
 				{
 					m_columnWidthsDirty = true;
+					SaveActivePreset();
 					gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", result.identifier, result.finalPath, version);
 				}
 				else
@@ -70,6 +70,7 @@ void CDependencyWindow::HandlePathProcessingResults()
 					if (success)
 					{
 						m_columnWidthsDirty = true;
+						SaveActivePreset();
 						gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", result.identifier, exe.path, exe.version);
 					}
 					else
@@ -225,7 +226,7 @@ void CDependencyWindow::LaunchFileBrowser(std::string_view identifier, std::stri
 
 	m_fileBrowseActive[identStr] = true;
 
-	std::string startLocation{ g_presetManager.GetLastBrowseLocation() };
+	std::string startLocation{ g_stateManager.GetLastBrowseDir() };
 
 	if (startLocation.empty() || !std::filesystem::exists(startLocation))
 	{
@@ -280,7 +281,7 @@ void CDependencyWindow::CheckFileDialogResults()
 
 		if (!selectedFile.empty())
 		{
-			g_presetManager.SaveLastBrowseLocation(selectedFile);
+			g_stateManager.SetLastBrowseDir(selectedFile);
 
 			std::string displayPath{ GetDisplayPath(selectedFile) };
 			size_t const len{ std::min(displayPath.length(), size_t(1023)) };

@@ -3,10 +3,10 @@
 #include "common/loggers.hpp"
 #include "common/common.hpp"
 #include "common/process_executor.hpp"
+#include <nlohmann/json.hpp>
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <sstream>
 #include <algorithm>
 #include <charconv>
 #include <expected>
@@ -477,245 +477,155 @@ std::string CVersionManager::GetConfigFilePath() const
 //////////////////////////////////////////////////////////////////////////
 bool CVersionManager::LoadFromCache()
 {
-	std::string configPath{ GetConfigFilePath() };
+	std::string const configPath{ GetConfigFilePath() };
 	gLog.Info(Tge::Logging::ETarget::File, "VersionManager: LoadFromCache: Starting to load from {}", configPath);
 
-	if (!fs::exists(configPath))
-	{
-		gLog.Info(Tge::Logging::ETarget::File, "VersionManager: No cache file found at {}", configPath);
-		return false;
-	}
-
 	std::ifstream file(configPath);
+	bool success{ false };
 
-	if (!file.is_open())
+	if (file.is_open())
 	{
-		gLog.Warning(Tge::Logging::ETarget::File, "VersionManager: Failed to open cache file: {}", configPath);
-		return false;
-	}
+		auto const parsed = nlohmann::json::parse(file, nullptr, false);
 
-	int rateLimitRequests{ 0 };
-	std::string rateLimitHourStart;
-	std::string line;
-	std::optional<ECompilerKind> currentKind;
-	bool isConfigSection{ false };
-
-	std::lock_guard<std::mutex> lock(m_dataMutex);
-
-	while (std::getline(file, line))
-	{
-		if (!line.empty() && line[0] != '#')
+		if (!parsed.is_discarded() && parsed.is_object())
 		{
-			if (line.length() >= 2 && line[0] == '[' && line.back() == ']')
-			{
-				std::string const section{ line.substr(1, line.length() - 2) };
-				isConfigSection = (section == "config");
-				currentKind = std::nullopt;
+			std::lock_guard<std::mutex> lock(m_dataMutex);
 
-				if (section == "gcc")
+			if (parsed.contains("config") && parsed["config"].is_object())
+			{
+				nlohmann::json const& config{ parsed["config"] };
+				std::string const token{ config.value("githubToken", "") };
+
+				if (!token.empty())
 				{
-					currentKind = ECompilerKind::Gcc;
+					SetGitHubTokenInternal(token);
 				}
-				else if (section == "clang")
-				{
-					currentKind = ECompilerKind::Clang;
-				}
+
+				int const rateLimitRequests{ config.value("rateLimitRequests", 0) };
+				std::string const rateLimitHourStart{ config.value("rateLimitHourStart", "") };
+				gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Loading rate limit data from cache: {} requests, hour start: {}", rateLimitRequests, rateLimitHourStart);
+				m_rateLimitTracker.SetRateLimitData(rateLimitRequests, rateLimitHourStart);
 			}
-			else
+
+			if (parsed.contains("compilers") && parsed["compilers"].is_object())
 			{
-				size_t equalPos{ line.find('=') };
+				static constexpr std::array<std::pair<std::string_view, ECompilerKind>, 2> kindMap{{
+					{ "gcc", ECompilerKind::Gcc },
+					{ "clang", ECompilerKind::Clang }
+				}};
 
-				if (equalPos != std::string::npos)
+				for (auto const& [kindKey, kindData] : parsed["compilers"].items())
 				{
-					std::string key{ line.substr(0, equalPos) };
-					std::string value{ line.substr(equalPos + 1) };
+					ECompilerKind kind{ ECompilerKind::Gcc };
+					bool validKind{ false };
 
-					if (isConfigSection)
+					for (auto const& [keyStr, kindVal] : kindMap)
 					{
-						if (key == "githubToken")
+						if (kindKey == keyStr)
 						{
-							SetGitHubTokenInternal(value);
-						}
-						else if (key == "rateLimitRequests")
-						{
-							auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), rateLimitRequests);
-
-							if (ec != std::errc{})
-							{
-								rateLimitRequests = 0;
-							}
-							else
-							{
-								gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Found rateLimitRequests in config: {}", rateLimitRequests);
-							}
-						}
-						else if (key == "rateLimitHourStart")
-						{
-							rateLimitHourStart = value;
-							gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Found rateLimitHourStart in config: {}", rateLimitHourStart);
+							kind = kindVal;
+							validKind = true;
 						}
 					}
-					else if (currentKind.has_value())
+
+					if (validKind && kindData.is_object())
 					{
-						auto& compilerVersions = m_compilerVersions[*currentKind];
+						SCompilerVersions& cv{ m_compilerVersions[kind] };
+						cv.baseUrl = kindData.value("baseUrl", cv.baseUrl);
+						cv.lastUpdated = kindData.value("lastUpdated", "");
 
-						if (key == "baseUrl")
+						if (kindData.contains("branches") && kindData["branches"].is_array())
 						{
-							compilerVersions.baseUrl = value;
+							cv.branches = kindData["branches"].get<std::vector<std::string>>();
 						}
-						else if (key == "lastUpdated")
+
+						if (kindData.contains("tags") && kindData["tags"].is_array())
 						{
-							compilerVersions.lastUpdated = value;
+							cv.tags = kindData["tags"].get<std::vector<std::string>>();
 						}
-						else if (key == "branches")
+
+						if (kindData.contains("versions") && kindData["versions"].is_array())
 						{
-							compilerVersions.branches.clear();
-							std::stringstream ss(value);
-							std::string branch;
-
-							while (std::getline(ss, branch, ','))
-							{
-								branch.erase(0, branch.find_first_not_of(" \t"));
-								branch.erase(branch.find_last_not_of(" \t") + 1);
-
-								if (!branch.empty())
-								{
-									compilerVersions.branches.emplace_back(std::move(branch));
-								}
-							}
-						}
-						else if (key == "tags")
-						{
-							compilerVersions.tags.clear();
-							std::stringstream ss(value);
-							std::string tag;
-
-							while (std::getline(ss, tag, ','))
-							{
-								tag.erase(0, tag.find_first_not_of(" \t"));
-								tag.erase(tag.find_last_not_of(" \t") + 1);
-
-								if (!tag.empty())
-								{
-									compilerVersions.tags.emplace_back(std::move(tag));
-								}
-							}
-						}
-						else if (key == "versions")
-						{
-							compilerVersions.versions.clear();
-							std::stringstream ss(value);
-							std::string version;
-
-							while (std::getline(ss, version, ','))
-							{
-								version.erase(0, version.find_first_not_of(" \t"));
-								version.erase(version.find_last_not_of(" \t") + 1);
-
-								if (!version.empty())
-								{
-									compilerVersions.versions.emplace_back(std::move(version));
-								}
-							}
+							cv.versions = kindData["versions"].get<std::vector<std::string>>();
 						}
 					}
 				}
 			}
+
+			success = true;
+			gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Successfully loaded cache from {}", configPath);
+		}
+		else
+		{
+			gLog.Warning(Tge::Logging::ETarget::File, "VersionManager: Cache file is not valid JSON (old format), will be rebuilt: {}", configPath);
 		}
 	}
+	else
+	{
+		gLog.Info(Tge::Logging::ETarget::File, "VersionManager: No cache file found at {}", configPath);
+	}
 
-	gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Loading rate limit data from cache: {} requests, hour start: {}", rateLimitRequests, rateLimitHourStart);
-	m_rateLimitTracker.SetRateLimitData(rateLimitRequests, rateLimitHourStart);
-
-	gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Successfully loaded cache from {}", configPath);
-	return true;
+	return success;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CVersionManager::SaveToCache() const
 {
-	std::string cacheDir{ GetCacheDirectory() };
+	std::string const cacheDir{ GetCacheDirectory() };
 	std::error_code ec;
+	fs::create_directories(cacheDir, ec);
+	bool success{ false };
 
-	if (!fs::exists(cacheDir))
+	if (!ec)
 	{
-		fs::create_directories(cacheDir, ec);
+		nlohmann::json cache;
+		auto const [requestsUsed, hourStart] = m_rateLimitTracker.GetRateLimitData();
+		cache["config"]["githubToken"] = m_githubToken;
+		cache["config"]["rateLimitRequests"] = requestsUsed;
+		cache["config"]["rateLimitHourStart"] = hourStart;
 
-		if (ec)
 		{
-			gLog.Warning(Tge::Logging::ETarget::File, "VersionManager: Failed to create cache directory {}: {}", cacheDir, ec.message());
-			return false;
-		}
-	}
+			std::lock_guard<std::mutex> lock(m_dataMutex);
 
-	std::string configPath{ GetConfigFilePath() };
-	std::ofstream file(configPath);
-
-	if (!file.is_open())
-	{
-		gLog.Warning(Tge::Logging::ETarget::File, "VersionManager: Failed to create cache file: {}", configPath);
-		return false;
-	}
-
-	file << "# Compiler versions cache - generated by Compilatron\n";
-	file << "# This file is automatically managed\n\n";
-
-	file << "[config]\n";
-
-	if (!m_githubToken.empty())
-	{
-		file << "githubToken=" << m_githubToken << "\n";
-	}
-
-	auto const [requestsUsed, hourStart] = m_rateLimitTracker.GetRateLimitData();
-	file << "rateLimitRequests=" << requestsUsed << "\n";
-	file << "rateLimitHourStart=" << hourStart << "\n";
-	file << "\n";
-
-	std::lock_guard<std::mutex> lock(m_dataMutex);
-
-	for (auto const& [kind, versions] : m_compilerVersions)
-	{
-		file << "[" << (kind == ECompilerKind::Gcc ? "gcc" : "clang") << "]\n";
-		file << "baseUrl=" << versions.baseUrl << "\n";
-		file << "lastUpdated=" << versions.lastUpdated << "\n";
-
-		file << "branches=";
-		for (size_t i = 0; i < versions.branches.size(); ++i)
-		{
-			if (i > 0)
+			for (auto const& [kind, versions] : m_compilerVersions)
 			{
-				file << ",";
+				std::string const kindKey{ kind == ECompilerKind::Gcc ? "gcc" : "clang" };
+				cache["compilers"][kindKey]["baseUrl"] = versions.baseUrl;
+				cache["compilers"][kindKey]["lastUpdated"] = versions.lastUpdated;
+				cache["compilers"][kindKey]["branches"] = versions.branches;
+				cache["compilers"][kindKey]["tags"] = versions.tags;
+				cache["compilers"][kindKey]["versions"] = versions.versions;
 			}
-			file << versions.branches[i];
 		}
-		file << "\n";
 
-		file << "tags=";
-		for (size_t i = 0; i < versions.tags.size(); ++i)
-		{
-			if (i > 0)
-			{
-				file << ",";
-			}
-			file << versions.tags[i];
-		}
-		file << "\n";
+		std::string const configPath{ GetConfigFilePath() };
+		std::ofstream file(configPath);
 
-		file << "versions=";
-		for (size_t i = 0; i < versions.versions.size(); ++i)
+		if (file.is_open())
 		{
-			if (i > 0)
+			file << cache.dump(2) << "\n";
+			success = file.good();
+
+			if (success)
 			{
-				file << ",";
+				gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Successfully saved cache to {}", configPath);
 			}
-			file << versions.versions[i];
+			else
+			{
+				gLog.Warning(Tge::Logging::ETarget::File, "VersionManager: Failed to write cache file: {}", configPath);
+			}
 		}
-		file << "\n\n";
+		else
+		{
+			gLog.Warning(Tge::Logging::ETarget::File, "VersionManager: Failed to create cache file: {}", configPath);
+		}
+	}
+	else
+	{
+		gLog.Warning(Tge::Logging::ETarget::File, "VersionManager: Failed to create cache directory {}: {}", cacheDir, ec.message());
 	}
 
-	gLog.Info(Tge::Logging::ETarget::File, "VersionManager: Successfully saved cache to {}", configPath);
-	return true;
+	return success;
 }
 
 //////////////////////////////////////////////////////////////////////////

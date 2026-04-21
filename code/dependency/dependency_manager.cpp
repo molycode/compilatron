@@ -4,17 +4,14 @@
 #include "common/process_executor.hpp"
 #include <tge/init/assert.hpp>
 #include <filesystem>
-#include <fstream>
 #include <algorithm>
 #include <unistd.h>
-#include <regex>
 #include <set>
 #include <thread>
 #include <mutex>
 #include <functional>
 #include <chrono>
 #include <format>
-#include <charconv>
 #include <sstream>
 
 namespace Ctrn
@@ -1523,122 +1520,6 @@ bool CDependencyManager::BuildFromSource(SAdvancedDependencyInfo const& dep, std
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CDependencyManager::LoadConfiguration()
-{
-	bool success{ true };
-
-	if (fs::exists(m_configFilePath))
-	{
-		std::ifstream file(m_configFilePath);
-
-		if (!file.is_open())
-		{
-			gDepLog.Warning(Tge::Logging::ETarget::File, "Failed to open config file: {}", m_configFilePath);
-			success = false;
-		}
-		else
-		{
-			std::string line;
-			std::string currentSection;
-
-			while (std::getline(file, line))
-			{
-				if (!line.empty() && line[0] != '#')
-				{
-					if (line[0] == '[' && line.back() == ']')
-					{
-						currentSection = line.substr(1, line.length() - 2);
-					}
-					else
-					{
-						size_t const equalPos = line.find('=');
-
-						if (equalPos != std::string::npos && !currentSection.empty())
-						{
-							std::string key{ line.substr(0, equalPos) };
-							std::string value{ line.substr(equalPos + 1) };
-
-							auto* dep = GetDependency(currentSection);
-
-							if (dep != nullptr && key == "selected_location")
-							{
-								std::regex const locationRegex(R"((\w+):([^:]+):(\d+))");
-								std::smatch match;
-
-								if (std::regex_match(value, match, locationRegex))
-								{
-									EInstallLocation locType = EInstallLocation::System;
-
-									if (match[1] == "UserWide") locType = EInstallLocation::UserWide;
-									else if (match[1] == "LocalApp") locType = EInstallLocation::LocalApp;
-
-									std::string matchPath{ match[2] };
-									std::string priorityStr{ match[3] };
-									int priority{};
-									std::from_chars(priorityStr.data(), priorityStr.data() + priorityStr.size(), priority);
-
-									bool locFound{ false };
-
-									for (auto& loc : dep->foundLocations)
-									{
-										if (!locFound && loc.type == locType && loc.path == matchPath)
-										{
-											loc.priority = priority;
-											locFound = true;
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-			gDepLog.Info(Tge::Logging::ETarget::File, "Loaded dependency configuration from {}", m_configFilePath);
-		}
-	}
-
-	return success;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CDependencyManager::SaveConfiguration()
-{
-	std::ofstream file(m_configFilePath);
-	if (!file.is_open())
-	{
-		gDepLog.Warning(Tge::Logging::ETarget::File, "Failed to create config file: {}", m_configFilePath);
-		return false;
-	}
-
-	file << "# Compilatron Dependency Configuration\n";
-	file << "# Generated automatically - edit with care\n\n";
-
-	for (auto const& dep : m_dependencies)
-	{
-		if (dep->selectedLocation)
-		{
-			file << "[" << dep->identifier << "]\n";
-
-			std::string locTypeStr;
-			switch (dep->selectedLocation->type)
-			{
-				case EInstallLocation::System: locTypeStr = "System"; break;
-				case EInstallLocation::UserWide: locTypeStr = "UserWide"; break;
-				case EInstallLocation::LocalApp: locTypeStr = "LocalApp"; break;
-			}
-
-			file << "selected_location=" << locTypeStr << ":"
-				 << dep->selectedLocation->path << ":"
-				 << dep->selectedLocation->priority << "\n\n";
-		}
-	}
-
-	gDepLog.Info(Tge::Logging::ETarget::File, "Saved dependency configuration to {}", m_configFilePath);
-	return true;
-}
-
-//////////////////////////////////////////////////////////////////////////
 bool CDependencyManager::InstallDependency(std::string_view identifier)
 {
 	auto* dep = GetDependency(identifier);
@@ -1655,34 +1536,6 @@ bool CDependencyManager::InstallDependency(std::string_view identifier)
 	}
 
 	return success;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CDependencyManager::SetSelectedLocation(std::string_view identifier,
-	EInstallLocation location, std::string_view path)
-{
-	auto* dep = GetDependency(identifier);
-	bool found{ false };
-
-	if (dep != nullptr)
-	{
-		auto it = std::ranges::find_if(dep->foundLocations, [&](auto const& loc) {
-			return loc.type == location && loc.path == path;
-		});
-		found = it != dep->foundLocations.end();
-
-		if (found)
-		{
-			dep->selectedLocation = &*it;
-
-			if (!SaveConfiguration())
-			{
-				gDepLog.Warning("Failed to save dependency configuration after setting location for: {}", identifier);
-			}
-		}
-	}
-
-	return found;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -16,6 +16,7 @@ target_include_directories(Compilatron SYSTEM PRIVATE
 	${IMGUI_DIR}
 	${IMGUI_DIR}/backends
 	${CMAKE_SOURCE_DIR}/external/fonts
+	${CMAKE_SOURCE_DIR}/external
 )
 
 # Copy font files alongside the executable

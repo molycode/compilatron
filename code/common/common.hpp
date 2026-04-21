@@ -2,6 +2,7 @@
 
 #include "build/compiler_registry.hpp"
 #include "common/cpu_info.hpp"
+#include "common/state_manager.hpp"
 #include <atomic>
 #include <string>
 #include <string_view>

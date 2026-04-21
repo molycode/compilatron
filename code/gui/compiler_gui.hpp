@@ -46,8 +46,6 @@ public:
 	void Initialize();
 
 	void Render();
-	void SaveWindowState(int x, int y, int width, int height);
-	bool LoadWindowState() const;
 
 	SBuildSettings const& GetSettings() const { return g_buildSettings; }
 
@@ -128,9 +126,9 @@ private:
 	void RenderAboutDialog();
 
 	void SaveToPreset(std::string_view presetName, std::string_view description);
-	std::string GetPresetDescription(std::string_view presetName);
-	[[nodiscard]] bool IsPresetDirty() const;
-	void MarkPresetDirty();
+	void SaveActivePreset();
+	void ShowDuplicateDialog();
+	void ShowRenameDialog();
 
 	SBuildSettings CreateBuildSettingsFromTabs() const;
 	void CreateTabsFromBuildSettings(SBuildSettings const& settings);
@@ -155,9 +153,6 @@ private:
 	std::unordered_map<uint16_t, std::unique_ptr<CCompilerUnit>> m_compilerUnits;
 	uint16_t m_confirmTabId{ 0 };
 	std::string m_currentPresetName;
-	std::string m_dialogDiffPresetName;
-	SBuildSettings m_dialogDiffSnapshot;
-	SBuildSettings m_savedPresetSnapshot;
 	std::string m_tokenTestResult;
 	std::string m_compilerToRemove;
 	uint16_t m_commandDialogTabId{ 0 };
@@ -184,12 +179,11 @@ private:
 	bool m_showBuildConfirm{ false };
 	bool m_sourcesDialogJustOpened{ false };
 	bool m_buildDialogJustOpened{ false };
-	bool m_needsPresetLocationReload{ false };
 	bool m_showSettingsDialog{ false };
 	bool m_tokenTestInProgress{ false };
 	std::atomic<bool> m_isBuilding{ false };
 	bool m_showPresetSaveDialog{ false };
-	bool m_presetSaveAs{ false };
+	bool m_presetRenaming{ false };
 	bool m_showDependencyWindow{ false };
 	bool m_showAboutDialog{ false };
 	bool m_aboutUrlOpenFailed{ false };

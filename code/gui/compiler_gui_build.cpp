@@ -32,51 +32,52 @@ void CCompilerGUI::StartBuild()
 		{
 			if (tab.isOpen && !tab.name.empty() && !tab.folderName.empty())
 			{
-				if (!IsLldAvailableForTab(tab))
+				if (IsLldAvailableForTab(tab))
 				{
-					gLog.Warning(Tge::Logging::ETarget::Console, "Skipping '{}' — lld selected but ld.lld not found", tab.name);
-					continue;
-				}
+					auto unitIt = m_compilerUnits.find(tab.id);
 
-				auto unitIt = m_compilerUnits.find(tab.id);
-
-				if (unitIt != m_compilerUnits.end() && unitIt->second != nullptr)
-				{
-					CCompilerUnit& unit = *unitIt->second;
-					unit.UpdateBuildConfig(BuildConfigFromTab(tab));
-
-					if (tab.kind == ECompilerKind::Gcc)
+					if (unitIt != m_compilerUnits.end() && unitIt->second != nullptr)
 					{
-						static_cast<CGccUnit*>(&unit)->SetGccSettings(tab.gccSettings);
+						CCompilerUnit& unit = *unitIt->second;
+						unit.UpdateBuildConfig(BuildConfigFromTab(tab));
+
+						if (tab.kind == ECompilerKind::Gcc)
+						{
+							static_cast<CGccUnit*>(&unit)->SetGccSettings(tab.gccSettings);
+						}
+						else
+						{
+							static_cast<CClangUnit*>(&unit)->SetClangSettings(tab.clangSettings);
+						}
+
+						unit.GenerateCommands();
+						ClearUnitLog(tab.id);
+
+						std::string folderName{ tab.folderName };
+						std::string name{ tab.name };
+
+						unit.SetCompletionCallback([this, folderName, name](std::string const& unitName, bool success, std::string const&)
+						{
+							gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Unit completed: {} (success: {})", unitName, success ? "yes" : "no");
+
+							if (success)
+							{
+								std::string const installPath{ GetResolvedInstallPath() + "/" + folderName + "/bin" };
+								gLog.Info(Tge::Logging::ETarget::Console, "Compiler {} built successfully at: {}", name, installPath);
+								gLog.Info(Tge::Logging::ETarget::Console, "Use 'Find Compilers' in the dependency manager to register it.");
+							}
+						});
+
+						units.emplace_back(&unit);
 					}
 					else
 					{
-						static_cast<CClangUnit*>(&unit)->SetClangSettings(tab.clangSettings);
+						gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: StartBuild: No unit found for tab '{}'", tab.name);
 					}
-
-					unit.GenerateCommands();
-					ClearUnitLog(tab.id);
-
-					std::string folderName{ tab.folderName };
-					std::string name{ tab.name };
-
-					unit.SetCompletionCallback([this, folderName, name](std::string const& unitName, bool success, std::string const&)
-					{
-						gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Unit completed: {} (success: {})", unitName, success ? "yes" : "no");
-
-						if (success)
-						{
-							std::string const installPath{ GetResolvedInstallPath() + "/" + folderName + "/bin" };
-							gLog.Info(Tge::Logging::ETarget::Console, "Compiler {} built successfully at: {}", name, installPath);
-							gLog.Info(Tge::Logging::ETarget::Console, "Use 'Find Compilers' in the dependency manager to register it.");
-						}
-					});
-
-					units.emplace_back(&unit);
 				}
 				else
 				{
-					gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: StartBuild: No unit found for tab '{}'", tab.name);
+					gLog.Warning(Tge::Logging::ETarget::Console, "Skipping '{}' — lld selected but ld.lld not found", tab.name);
 				}
 			}
 		}

@@ -115,16 +115,7 @@ int main(int argc, char* argv[])
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-	// Try to load saved window state directly to globals (create temporary preset manager for this)
-	// We create it here temporarily just to load window state before GUI creation
-	Ctrn::CPresetManager tempPresetManager;
-
-	if (!tempPresetManager.LoadWindowState())
-	{
-		Ctrn::gLog.Info(Tge::Logging::ETarget::File, "WindowState: Using default window state: pos({},{}) size({}x{})",
-			Ctrn::g_mainWindowPosX.load(), Ctrn::g_mainWindowPosY.load(),
-			Ctrn::g_mainWindowWidth.load(), Ctrn::g_mainWindowHeight.load());
-	}
+	Ctrn::g_stateManager.Initialize();
 
 	GLFWwindow* window = glfwCreateWindow(Ctrn::g_mainWindowWidth.load(), Ctrn::g_mainWindowHeight.load(), "Compilatron", nullptr, nullptr);
 
@@ -335,20 +326,14 @@ int main(int argc, char* argv[])
 	}
 
 	// Save window state before cleanup
-	if (mainGui) // Only save if main GUI was created (not just dependency dialog)
 	{
 		int currentX, currentY, currentWidth, currentHeight;
 		glfwGetWindowPos(window, &currentX, &currentY);
 		glfwGetWindowSize(window, &currentWidth, &currentHeight);
-
-		Ctrn::gLog.Info(Tge::Logging::ETarget::File, "WindowState: Saving window state: pos({},{}) size({}x{})", currentX, currentY, currentWidth, currentHeight);
-
-		mainGui->SaveWindowState(currentX, currentY, currentWidth, currentHeight);
+		Ctrn::g_stateManager.SetMainWindow(currentX, currentY, currentWidth, currentHeight);
 	}
-	else
-	{
-		Ctrn::gLog.Info(Tge::Logging::ETarget::File, "WindowState: Not saving window state - mainGui not created");
-	}
+
+	Ctrn::g_stateManager.Terminate();
 
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();

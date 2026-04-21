@@ -32,6 +32,7 @@ public:
 	// Public methods for preset integration - called when presets are loaded/saved
 	void LoadLocationSelectionsFromPresets();
 	void SaveLocationSelectionsToPresets();
+	std::string GetPresetDescription(std::string_view presetName);
 	
 private:
 
@@ -136,18 +137,14 @@ private:
 	void CancelInstallation(std::string_view identifier);
 	void SaveLog();
 	
-	// Preset integration
-	std::string GetPresetDescription(std::string_view presetName);
-	
 	void RecalculateColumnWidths();
 
 	// Dialog state persistence - internal only
 	void SaveDialogState();
 	void LoadDialogState();
+	void SaveActivePreset();
 
 private:
-	std::string GetDialogStateFilePath() const;
-	
 	CLogSaver m_logSaver;
 
 	// Window state variables

@@ -1285,7 +1285,7 @@ void CCompilerGUI::RenderGccAdvancedDialog()
 
 			if (anyChanged)
 			{
-				MarkPresetDirty();
+				SaveActivePreset();
 			}
 
 			ImGui::SameLine();
@@ -2002,7 +2002,7 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 
 			if (anyChanged)
 			{
-				MarkPresetDirty();
+				SaveActivePreset();
 			}
 
 			ImGui::SameLine();

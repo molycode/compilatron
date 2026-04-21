@@ -184,7 +184,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 			tab.name = selectedVersionFromDialog;
 			tab.tabDisplayName = selectedVersionFromDialog;
 			tab.tabLabel = tab.tabDisplayName + "###" + std::to_string(tab.id);
-			MarkPresetDirty();
+			SaveActivePreset();
 
 			auto const unitIt = m_compilerUnits.find(tab.id);
 
@@ -275,7 +275,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	if (RenderTextFieldWithContextMenu("##FolderName", tab.folderNameBuffer, sizeof(tab.folderNameBuffer)))
 	{
 		tab.folderName = tab.folderNameBuffer;
-		MarkPresetDirty();
+		SaveActivePreset();
 	}
 
 	auto validationResult = ValidateCompilerForBuild(tab);
@@ -332,7 +332,11 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	if (ImGui::SliderInt("##JobCount", &currentJobs, 1, maxJobs, "%d jobs"))
 	{
 		tab.numJobs = currentJobs;
-		MarkPresetDirty();
+	}
+
+	if (ImGui::IsItemDeactivatedAfterEdit())
+	{
+		SaveActivePreset();
 	}
 
 	if (ImGui::IsItemHovered())
@@ -352,7 +356,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	if (ImGui::Button("Reset##JobCount"))
 	{
 		tab.numJobs = 0;
-		MarkPresetDirty();
+		SaveActivePreset();
 	}
 
 	if (currentJobs > g_cpuInfo.physicalCores)
@@ -382,7 +386,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	RenderUnifiedCompilerSelector(tab.idTabCompiler, tab.hostCompiler,
 		[this, &tab](std::string const& newCompiler) {
 			tab.hostCompiler = newCompiler;
-			MarkPresetDirty();
+			SaveActivePreset();
 		},
 		true
 	);

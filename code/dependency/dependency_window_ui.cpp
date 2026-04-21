@@ -263,8 +263,7 @@ void CDependencyWindow::RenderDepsTable(std::vector<SAdvancedDependencyInfo*> co
 							if (ImGui::Selectable(items[i].c_str(), selected))
 							{
 								dep->selectedLocation = &dep->foundLocations[i];
-								SaveLocationSelectionsToPresets();
-								SaveDialogState();
+								SaveActivePreset();
 							}
 
 							if (selected)

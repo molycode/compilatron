@@ -1,7 +1,12 @@
 #include "dependency/dependency_window.hpp"
 #include "build/build_settings.hpp"
 #include "common/common.hpp"
+#include "common/loggers.hpp"
+
+#include <nlohmann/json.hpp>
+
 #include <format>
+#include <filesystem>
 #include <fstream>
 
 namespace Ctrn
@@ -9,7 +14,7 @@ namespace Ctrn
 //////////////////////////////////////////////////////////////////////////
 void CDependencyWindow::LoadLocationSelectionsFromPresets()
 {
-	for (auto const& [identifier, selectedPath] : g_buildSettings.dependencyLocationSelections)
+	for (auto const& [identifier, savedPath] : g_buildSettings.dependencyLocationSelections)
 	{
 		auto* dep = g_dependencyManager.GetDependency(identifier);
 
@@ -19,10 +24,26 @@ void CDependencyWindow::LoadLocationSelectionsFromPresets()
 
 			for (auto& location : dep->foundLocations)
 			{
-				if (!found && location.path == selectedPath)
+				if (!found && location.path == savedPath)
 				{
 					dep->selectedLocation = &location;
 					found = true;
+				}
+			}
+
+			// Saved path wasn't found by the scanner — re-register it as a custom path
+			if (!found && std::filesystem::exists(savedPath))
+			{
+				SExecutableInfo const execInfo{ CreateExecutableInfo(savedPath, identifier) };
+
+				if (execInfo.isWorking)
+				{
+					bool const success{ g_dependencyManager.RegisterAdditionalVersion(identifier, savedPath, execInfo.version) };
+
+					if (success)
+					{
+						gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Restored custom {} path: {}", identifier, savedPath);
+					}
 				}
 			}
 		}
@@ -49,24 +70,17 @@ void CDependencyWindow::SaveLocationSelectionsToPresets()
 //////////////////////////////////////////////////////////////////////////
 std::string CDependencyWindow::GetPresetDescription(std::string_view presetName)
 {
-	// Get preset file path using the same logic as PresetManager
-	std::string const presetFile = std::format("{}/config/{}.preset", g_dataDir, presetName);
-
+	std::string const presetFile{ std::format("{}/config/presets/{}.json", g_dataDir, presetName) };
 	std::ifstream file(presetFile);
 	std::string result;
 
 	if (file.is_open())
 	{
-		std::string line;
-		bool found{ false };
+		nlohmann::json parsed{ nlohmann::json::parse(file, nullptr, false) };
 
-		while (std::getline(file, line) && !found && (line.empty() || line[0] != '['))
+		if (!parsed.is_discarded() && parsed.contains("description") && parsed["description"].is_string())
 		{
-			if (!line.empty() && line[0] != '#' && line.starts_with("description="))
-			{
-				result = line.substr(12); // Remove "description=" prefix
-				found = true;
-			}
+			result = parsed["description"].get<std::string>();
 		}
 	}
 

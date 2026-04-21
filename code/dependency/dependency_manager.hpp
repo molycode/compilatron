@@ -86,13 +86,9 @@ public:
 	SAdvancedDependencyInfo* GetDependencyByName(std::string_view name) const;
 
 	[[nodiscard]] bool InstallDependency(std::string_view identifier);
-	[[nodiscard]] bool SetSelectedLocation(std::string_view identifier, EInstallLocation location, std::string_view path);
 
 	std::vector<std::string> GetMissingPrerequisites(std::string_view identifier) const;
 	std::vector<std::string> GetInstallationOrder(std::vector<std::string> const& identifiers) const;
-
-	[[nodiscard]] bool LoadConfiguration();
-	[[nodiscard]] bool SaveConfiguration();
 
 	void UpdateEnvironmentPaths();
 	std::string GetSelectedPath(std::string_view identifier) const;
@@ -109,7 +105,6 @@ public:
 private:
 
 	std::vector<std::unique_ptr<SAdvancedDependencyInfo>> m_dependencies;
-	std::string m_configFilePath{ "./dependency_config.json" };
 	mutable std::mutex m_dependenciesMutex;  // Protect shared dependency data from race conditions
 
 	void ScanDependency(SAdvancedDependencyInfo& dep);

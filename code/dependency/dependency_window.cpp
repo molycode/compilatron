@@ -2,11 +2,10 @@
 #include "build/build_settings.hpp"
 #include "common/common.hpp"
 #include "common/loggers.hpp"
+#include "gui/preset_manager.hpp"
 #include <imgui.h>
-#include <charconv>
 #include <filesystem>
 #include <format>
-#include <fstream>
 
 namespace Ctrn
 {
@@ -99,181 +98,41 @@ bool CDependencyWindow::Render()
 }
 
 //////////////////////////////////////////////////////////////////////////
-std::string CDependencyWindow::GetDialogStateFilePath() const
-{
-	return g_dataDir + "/config/.dependency_tab_state";
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CDependencyWindow::SaveDialogState()
 {
-	// Ensure config directory exists
-	std::string configDir{ g_dataDir + "/config" };
-	std::error_code ec;
-	std::filesystem::create_directories(configDir, ec);
-
-	std::string stateFile{ GetDialogStateFilePath() };
-	std::ofstream file(stateFile);
-
-	if (file.is_open())
-	{
-		file << m_dialogPosX << "\n";
-		file << m_dialogPosY << "\n";
-		file << m_dialogWidth << "\n";
-		file << m_dialogHeight << "\n";
-
-		// Save dependency location selections — persists independently of preset system
-		file << "[DependencyLocationSelections]\n";
-
-		for (auto const& [identifier, path] : g_buildSettings.dependencyLocationSelections)
-		{
-			file << identifier << "=" << path << "\n";
-		}
-
-		gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Dialog state saved: pos({:.0f},{:.0f}) size({:.0f}x{:.0f})",
-			m_dialogPosX, m_dialogPosY, m_dialogWidth, m_dialogHeight);
-	}
-	else
-	{
-		gDepLog.Warning(Tge::Logging::ETarget::File, "DependencyTab: Failed to save dialog state to: {}", stateFile);
-	}
+	g_stateManager.SetDepWindow(m_dialogPosX, m_dialogPosY, m_dialogWidth, m_dialogHeight);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CDependencyWindow::LoadDialogState()
 {
-	std::string stateFile{ GetDialogStateFilePath() };
-	std::string oldStateFile{ g_dataDir + "/config/.dependency_dialog_state" };
+	g_stateManager.GetDepWindow(m_dialogPosX, m_dialogPosY, m_dialogWidth, m_dialogHeight);
 
-	// Check if we need to migrate from old dialog state file (same directory, just rename)
-	if (!std::filesystem::exists(stateFile) && std::filesystem::exists(oldStateFile))
+	if (m_dialogWidth < 800.0f || m_dialogHeight < 600.0f ||
+	    m_dialogWidth > 3840.0f || m_dialogHeight > 2160.0f)
 	{
-		gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Migrating old state file: {} -> {}", oldStateFile, stateFile);
-		std::error_code ec;
-		std::filesystem::copy_file(oldStateFile, stateFile, ec);
-
-		if (!ec)
-		{
-			std::filesystem::remove(oldStateFile, ec);
-			gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Migration successful");
-		}
-		else
-		{
-			gDepLog.Warning(Tge::Logging::ETarget::File, "DependencyTab: Migration failed: {}", ec.message());
-		}
+		m_dialogWidth = 1400.0f;
+		m_dialogHeight = 1000.0f;
+		m_dialogPosX = -1.0f;
+		m_dialogPosY = -1.0f;
 	}
+}
 
-	gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Checking state file: {}", stateFile);
+//////////////////////////////////////////////////////////////////////////
+void CDependencyWindow::SaveActivePreset()
+{
+	SaveLocationSelectionsToPresets();
 
-	if (std::filesystem::exists(stateFile))
+	std::string const name{ g_stateManager.GetActivePreset() };
+
+	if (!name.empty())
 	{
-		gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: State file exists, attempting to open");
-		std::ifstream file(stateFile);
+		std::string const desc{ g_presetManager.GetDescription(name) };
 
-		if (file.is_open())
+		if (!g_presetManager.SavePreset(name, desc, g_buildSettings))
 		{
-			std::string line;
-
-			// Skip any comment lines that might exist in old state files
-			bool foundPosX{ false };
-			while (!foundPosX && std::getline(file, line))
-			{
-				if (!line.empty() && line[0] != '#')
-				{
-					// This is the first data line (posX)
-					float v{};
-					std::from_chars(line.data(), line.data() + line.size(), v);
-					m_dialogPosX = v;
-					gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Read posX: {:.0f}", m_dialogPosX);
-					foundPosX = true;
-				}
-			}
-
-			// Read remaining values
-			if (std::getline(file, line)) {
-				float v{};
-				std::from_chars(line.data(), line.data() + line.size(), v);
-				m_dialogPosY = v;
-				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Read posY: {:.0f}", m_dialogPosY);
-			}
-			if (std::getline(file, line)) {
-				float v{};
-				std::from_chars(line.data(), line.data() + line.size(), v);
-				m_dialogWidth = v;
-				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Read width: {:.0f}", m_dialogWidth);
-			}
-			if (std::getline(file, line)) {
-				float v{};
-				std::from_chars(line.data(), line.data() + line.size(), v);
-				m_dialogHeight = v;
-				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Read height: {:.0f}", m_dialogHeight);
-			}
-
-			// Skip any remaining lines until the selections section header
-			bool foundSection{ false };
-
-			while (std::getline(file, line) && !foundSection)
-			{
-				foundSection = (line == "[DependencyLocationSelections]");
-			}
-
-			// Load dependency location selections if present
-			if (foundSection)
-			{
-				while (std::getline(file, line))
-				{
-					if (!line.empty() && line[0] != '[')
-					{
-						size_t const sep{ line.find('=') };
-
-						if (sep != std::string::npos)
-						{
-							std::string const identifier{ line.substr(0, sep) };
-							std::string const path{ line.substr(sep + 1) };
-
-							if (!identifier.empty() && !path.empty())
-							{
-								g_buildSettings.dependencyLocationSelections[identifier] = path;
-							}
-						}
-					}
-				}
-			}
-
-			// Log loaded values before validation
-			gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Raw state loaded: pos({:.0f},{:.0f}) size({:.0f}x{:.0f})",
-				m_dialogPosX, m_dialogPosY, m_dialogWidth, m_dialogHeight);
-
-			// Basic validation
-			if (m_dialogWidth >= 800 && m_dialogHeight >= 600 &&
-			    m_dialogWidth <= 3840 && m_dialogHeight <= 2160)
-			{
-				gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Dialog state validation passed: pos({:.0f},{:.0f}) size({:.0f}x{:.0f})",
-					m_dialogPosX, m_dialogPosY, m_dialogWidth, m_dialogHeight);
-			}
-			else
-			{
-				// Log the invalid values before resetting
-				float invalidWidth{ m_dialogWidth };
-				float invalidHeight{ m_dialogHeight };
-
-				// Reset to defaults if validation fails
-				m_dialogWidth = 1400.0f;
-				m_dialogHeight = 1000.0f;
-				m_dialogPosX = -1.0f;
-				m_dialogPosY = -1.0f;
-				gDepLog.Warning(Tge::Logging::ETarget::File, "DependencyTab: Dialog state validation failed: size({:.0f}x{:.0f}) out of bounds, using defaults",
-					invalidWidth, invalidHeight);
-			}
+			gDepLog.Warning(Tge::Logging::ETarget::File, "DependencyTab: Failed to save active preset '{}'", name);
 		}
-		else
-		{
-			gDepLog.Warning(Tge::Logging::ETarget::File, "DependencyTab: Failed to open dialog state file: {}", stateFile);
-		}
-	}
-	else
-	{
-		gDepLog.Info(Tge::Logging::ETarget::File, "DependencyTab: Dialog state file not found: {}", stateFile);
 	}
 }
 } // namespace Ctrn
