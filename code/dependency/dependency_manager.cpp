@@ -461,8 +461,6 @@ void CDependencyManager::UpdateEnvironmentPaths()
 	}
 
 	setenv("PATH", newPath.c_str(), 1);
-
-	gDepLog.Info(Tge::Logging::ETarget::File, "Updated PATH with dependency locations");
 }
 
 //////////////////////////////////////////////////////////////////////////

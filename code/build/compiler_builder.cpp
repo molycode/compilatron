@@ -39,7 +39,6 @@ void CCompilerBuilder::Initialize()
 //////////////////////////////////////////////////////////////////////////
 CCompilerBuilder::~CCompilerBuilder()
 {
-	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Destructor called, stopping build if running");
 	StopBuild();
 }
 
@@ -83,7 +82,11 @@ void CCompilerBuilder::StartBuild(
 //////////////////////////////////////////////////////////////////////////
 void CCompilerBuilder::StopBuild()
 {
-	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: StopBuild called, setting stop flag");
+	if (m_isBuilding)
+	{
+		gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Stopping build");
+	}
+
 	m_shouldStop = true;
 
 	for (auto* unit : m_units)

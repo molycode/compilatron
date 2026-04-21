@@ -293,12 +293,7 @@ bool CPresetManager::LoadPreset(std::string_view name, SBuildSettings& settings)
 						}
 					}
 
-					if (found)
-					{
-						gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Global compiler found in registry: {}",
-							settings.globalHostCompiler);
-					}
-					else
+					if (!found)
 					{
 						// Compiler is outside PATH (e.g. a locally built compiler) — add it explicitly
 						g_compilerRegistry.AddCompiler(settings.globalHostCompiler);
