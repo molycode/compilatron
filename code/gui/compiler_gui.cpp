@@ -36,6 +36,10 @@ void CCompilerGUI::Initialize()
 	m_compilerBuilder->Initialize();
 	m_versionManager.Initialize();
 
+	// Initialize registry and dep manager before loading preset so their scans see correct state
+	g_compilerRegistry.Initialize();
+	g_dependencyManager.InitializeAllDependencies();
+
 	m_currentPresetName = g_stateManager.GetActivePreset();
 
 	if (m_currentPresetName.empty())
@@ -64,14 +68,6 @@ void CCompilerGUI::Initialize()
 			}
 		}
 	}
-
-	// Initialize compiler registry — must be before dep manager since Scan() populates it
-	g_compilerRegistry.Initialize();
-	g_compilerRegistry.Scan();
-
-	// Initialize dependency manager (deferred from static construction)
-	g_dependencyManager.InitializeAllDependencies();
-	g_dependencyManager.ScanAllDependencies();
 
 	// Raw format: Console colors carry level signal; timestamp + message is sufficient
 	gLog.RegisterListener(this,
