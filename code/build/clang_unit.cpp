@@ -447,99 +447,66 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 			cmd << " -DLLVM_OPTIMIZED_TABLEGEN=ON";
 		}
 
-		if (config.linker.value != "default")
+		if (config.linker.value == "lld")
 		{
-			if (config.linker.value == "lld")
+			cmd << " -DLLVM_USE_LINKER=lld";
+			cmd << " -DCLANG_DEFAULT_LINKER=lld";
+
+			// Resolve and log which ld.lld will be used
+			std::filesystem::path lldPath;
+			std::string const compiler{ GetResolvedCompiler() };
+			std::error_code ec;
+			std::filesystem::path const resolved{ std::filesystem::canonical(compiler, ec) };
+			std::filesystem::path const compilerDir{ ec
+				? std::filesystem::path{ compiler }.parent_path()
+				: resolved.parent_path() };
+
+			std::filesystem::path const colocated{ compilerDir / "ld.lld" };
+
+			if (std::filesystem::exists(colocated))
 			{
-				cmd << " -DLLVM_USE_LINKER=lld";
-				cmd << " -DCLANG_DEFAULT_LINKER=lld";
+				lldPath = colocated;
+			}
+			else
+			{
+				char const* pathEnv{ std::getenv("PATH") };
 
-				// Resolve and log which ld.lld will be used
-				std::filesystem::path lldPath;
-
-				if (!config.lldOverridePath.value.empty())
+				if (pathEnv != nullptr)
 				{
-					lldPath = config.lldOverridePath.value;
-				}
-				else
-				{
-					std::string const compiler{ GetResolvedCompiler() };
-					std::error_code ec;
-					std::filesystem::path const resolved{ std::filesystem::canonical(compiler, ec) };
-					std::filesystem::path const compilerDir{ ec
-						? std::filesystem::path{ compiler }.parent_path()
-						: resolved.parent_path() };
+					std::string_view pathStr{ pathEnv };
+					size_t start{ 0 };
 
-					std::filesystem::path const colocated{ compilerDir / "ld.lld" };
-
-					if (std::filesystem::exists(colocated))
+					while (lldPath.empty())
 					{
-						lldPath = colocated;
-					}
-					else
-					{
-						char const* pathEnv{ std::getenv("PATH") };
+						size_t const colon{ pathStr.find(':', start) };
+						std::string_view const dir{ colon == std::string_view::npos
+							? pathStr.substr(start)
+							: pathStr.substr(start, colon - start) };
 
-						if (pathEnv != nullptr)
+						if (!dir.empty())
 						{
-							std::string_view pathStr{ pathEnv };
-							size_t start{ 0 };
+							std::filesystem::path const candidate{ std::filesystem::path{ dir } / "ld.lld" };
 
-							while (lldPath.empty())
+							if (std::filesystem::exists(candidate))
 							{
-								size_t const colon{ pathStr.find(':', start) };
-								std::string_view const dir{ colon == std::string_view::npos
-									? pathStr.substr(start)
-									: pathStr.substr(start, colon - start) };
-
-								if (!dir.empty())
-								{
-									std::filesystem::path const candidate{ std::filesystem::path{ dir } / "ld.lld" };
-
-									if (std::filesystem::exists(candidate))
-									{
-										lldPath = candidate;
-									}
-								}
-
-								if (colon == std::string_view::npos)
-								{
-									break;
-								}
-
-								start = colon + 1;
+								lldPath = candidate;
 							}
 						}
+
+						if (colon == std::string_view::npos)
+						{
+							break;
+						}
+
+						start = colon + 1;
 					}
 				}
+			}
 
-				if (!lldPath.empty())
-				{
-					m_unitLog.Info(Tge::Logging::ETarget::Console, "Linker: ld.lld resolved to: {}", lldPath.string());
-				}
-				else
-				{
-					m_unitLog.Warning(Tge::Logging::ETarget::Console, "Linker: lld selected but ld.lld not found — build will likely fail");
-				}
-			}
-			else if (config.linker.value == "gold")
-			{
-				cmd << " -DLLVM_USE_LINKER=gold";
-			}
-			else if (config.linker.value == "bfd")
-			{
-				cmd << " -DLLVM_USE_LINKER=bfd";
-			}
 		}
-
-		if (config.enableGoldPlugin)
+		else if (config.linker.value == "bfd")
 		{
-			std::string const binutilsIncDir{ g_dependencyManager.GetSelectedPath("binutils") };
-
-			if (!binutilsIncDir.empty())
-			{
-				cmd << " -DLLVM_BINUTILS_INCDIR=\"" << binutilsIncDir << "\"";
-			}
+			cmd << " -DLLVM_USE_LINKER=bfd";
 		}
 
 		// Additional configure flags (applied last so they can override anything)

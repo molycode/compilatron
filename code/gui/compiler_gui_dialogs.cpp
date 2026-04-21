@@ -1104,18 +1104,6 @@ void CCompilerGUI::RenderGccAdvancedDialog()
 					ImGui::SetTooltip("--enable-linker-build-id: Build ID support for debugging");
 				}
 
-				ImGui::SameLine();
-				anyChanged |= ImGui::Checkbox(gcc.enableGold.uiName.data(), &gcc.enableGold.value);
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::BeginTooltip();
-					ImGui::Text("--enable-gold: set gold as the default linker in the built GCC.");
-					ImGui::Text("Requires gold to be installed on the build system (binutils < 2.44).");
-					ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "gold was removed from binutils 2.44+. Consider using lld instead.");
-					ImGui::EndTooltip();
-				}
-
 				ImGui::Text("Target arch:");
 				ImGui::SetNextItemWidth(200);
 				char withArchBuffer[128];
@@ -1691,25 +1679,6 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					ImGui::SetTooltip("LLVM_ENABLE_LIBXML2: Enable libxml2 support (used by some LLVM tools).\nRequires libxml2-dev (Ubuntu/Debian), libxml2-devel (Fedora), or libxml2 (Arch).");
 				}
 
-				ImGui::SameLine();
-				anyChanged |= ImGui::Checkbox(clang.enableGoldPlugin.uiName.data(), &clang.enableGoldPlugin.value);
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::BeginTooltip();
-					ImGui::Text("Build gold linker plugin (LLVMgold.so)");
-					ImGui::Text("Enables LTO with the GNU gold linker in the compiled Clang.");
-					ImGui::Text("Requires binutils — install via the Dependencies window.");
-					ImGui::EndTooltip();
-				}
-
-				if (clang.enableGoldPlugin.value &&
-				    g_dependencyManager.GetSelectedPath("binutils").empty())
-				{
-					ImGui::SameLine();
-					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.1f, 1.0f), "binutils missing");
-				}
-
 				ImGui::Text("%s:", clang.ltoMode.uiName.data());
 				ImGui::SetNextItemWidth(150.0f);
 				static constexpr std::array<char const*, 4> ltoModes = {"Off", "On", "Thin", "Full"};
@@ -1756,7 +1725,7 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 
 				ImGui::Text("%s:", clang.linker.uiName.data());
 				ImGui::SetNextItemWidth(150.0f);
-				static constexpr std::array<char const*, 4> linkers = {"default", "lld", "gold", "bfd"};
+				static constexpr std::array<char const*, 2> linkers = {"lld", "bfd"};
 				int currentLinker{ 0 };
 				bool foundLinker{ false };
 
@@ -1788,123 +1757,15 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 
 				if (clang.linker.value == "lld")
 				{
-					// Poll async browse result
-					if (m_lldBrowseActive
-						&& m_lldBrowseFuture.valid()
-						&& m_lldBrowseFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
-					{
-						std::string selectedPath{ m_lldBrowseFuture.get() };
-
-						while (!selectedPath.empty() && std::isspace(static_cast<unsigned char>(selectedPath.back())))
-						{
-							selectedPath.pop_back();
-						}
-
-						if (!selectedPath.empty())
-						{
-							clang.lldOverridePath = selectedPath;
-							anyChanged = true;
-						}
-
-						m_lldBrowseActive = false;
-					}
-
-					// Resolved path display
 					std::string const resolvedLld{ FindLldForTab(*targetTab) };
 
-					if (clang.lldOverridePath.value.empty())
+					if (!resolvedLld.empty())
 					{
-						if (!resolvedLld.empty())
-						{
-							ImGui::TextDisabled("Auto: %s", resolvedLld.c_str());
-						}
-						else
-						{
-							ImGui::TextDisabled("Auto: not found");
-						}
+						ImGui::TextDisabled("ld.lld: %s", resolvedLld.c_str());
 					}
-
-					// Override path input
-					ImGui::Text("%s:", clang.lldOverridePath.uiName.data());
-					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 80.0f);
-
-					static char lldOverrideBuffer[1024]{};
-
-					if (!m_lldBrowseActive)
+					else
 					{
-						size_t const copyLen{ std::min(clang.lldOverridePath.value.length(), sizeof(lldOverrideBuffer) - 1) };
-						clang.lldOverridePath.value.copy(lldOverrideBuffer, copyLen);
-						lldOverrideBuffer[copyLen] = '\0';
-					}
-
-					if (ImGui::InputText("##LldOverride", lldOverrideBuffer, sizeof(lldOverrideBuffer)))
-					{
-						clang.lldOverridePath = lldOverrideBuffer;
-						anyChanged = true;
-					}
-
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::BeginTooltip();
-						ImGui::Text("Explicit path to ld.lld used when building this compiler.");
-						ImGui::Text("Leave empty to use auto-resolution (co-located with host compiler, then PATH).");
-						ImGui::Text("Example: /usr/bin/ld.lld");
-						ImGui::EndTooltip();
-					}
-
-					ImGui::SameLine();
-					ImGui::BeginDisabled(m_lldBrowseActive);
-
-					if (ImGui::Button("Browse##LldOverride"))
-					{
-						m_lldBrowseActive = true;
-						m_lldBrowseFuture = std::async(std::launch::async, []() -> std::string
-						{
-							auto result{ CProcessExecutor::Execute(
-								"zenity --file-selection --title=\"Select ld.lld\" 2>/dev/null").output };
-							RequestRedraw();
-							return result;
-						});
-					}
-
-					ImGui::EndDisabled();
-
-					if (ImGui::IsItemHovered())
-					{
-						ImGui::SetTooltip("Browse for ld.lld using file manager");
-					}
-
-					if (!clang.lldOverridePath.value.empty())
-					{
-						ImGui::SameLine();
-
-						if (ImGui::Button("Clear##LldOverride"))
-						{
-							clang.lldOverridePath = std::string{};
-							lldOverrideBuffer[0] = '\0';
-							anyChanged = true;
-						}
-
-						if (ImGui::IsItemHovered())
-						{
-							ImGui::SetTooltip("Clear override — restore auto-resolution");
-						}
-					}
-				}
-
-				if (clang.linker.value == "gold" && clang.ltoMode.value != "Off")
-				{
-					std::string const actualCompiler{ GetActualCompilerForTab(*targetTab) };
-					std::error_code ec;
-					std::filesystem::path const resolved{ std::filesystem::canonical(actualCompiler, ec) };
-					std::filesystem::path const compilerDir{ ec
-						? std::filesystem::path{ actualCompiler }.parent_path()
-						: resolved.parent_path() };
-
-					if (!std::filesystem::exists(compilerDir / ".." / "lib" / "LLVMgold.so"))
-					{
-						ImGui::SameLine();
-						ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "LLVMgold.so missing — use lld");
+						ImGui::TextDisabled("ld.lld: not found");
 					}
 				}
 

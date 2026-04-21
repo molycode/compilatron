@@ -174,14 +174,6 @@ void CCompilerGUI::Render()
 			}) };
 		g_dependencyManager.SetDynamicRequired("zlib", false, zlibEnabled);
 
-		bool const goldPluginEnabled{ std::any_of(m_compilerTabs.begin(), m_compilerTabs.end(),
-			[](SCompilerTab const& tab)
-			{
-				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableGoldPlugin.value;
-			}) };
-
-		g_dependencyManager.SetDynamicRequired("binutils", false, goldPluginEnabled);
-
 		m_showDependencyWindow = g_dependencyWindow.Render();
 	}
 

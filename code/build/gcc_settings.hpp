@@ -26,7 +26,6 @@ struct SGccSettings final
 	SProperty<bool>              enablePlugin{           "gcc_enablePlugin",           "Plugin support",       true                        };
 	SProperty<bool>              enablePie{              "gcc_enablePie",              "PIE",                  true                        };
 	SProperty<bool>              enableBuildId{          "gcc_enableBuildId",          "Build ID",             true                        };
-	SProperty<bool>              enableGold{             "gcc_enableGold",             "Gold linker",          false                       };
 	SProperty<std::string>       withArch{               "gcc_withArch",               "Target arch",          ""                          };
 	SProperty<std::string>       withTune{               "gcc_withTune",               "Target tune",          ""                          };
 	SProperty<std::string>       withSysroot{            "gcc_withSysroot",            "Sysroot",              ""                          };
@@ -39,7 +38,7 @@ struct SGccSettings final
 		return std::tie(enabledLanguages, enableLto, optimizationLevel, generateDebugSymbols,
 		                enableBootstrap, enableShared, useSystemZlib, disableWerror,
 		                enableChecking, checkingLevel, disableMultilib, modernCppAbi,
-		                posixThreads, enablePlugin, enablePie, enableBuildId, enableGold,
+		                posixThreads, enablePlugin, enablePie, enableBuildId,
 		                withArch, withTune, withSysroot,
 		                customCFlags, customCxxFlags, additionalConfigureFlags);
 	}
@@ -49,7 +48,7 @@ struct SGccSettings final
 		return std::tie(enabledLanguages, enableLto, optimizationLevel, generateDebugSymbols,
 		                enableBootstrap, enableShared, useSystemZlib, disableWerror,
 		                enableChecking, checkingLevel, disableMultilib, modernCppAbi,
-		                posixThreads, enablePlugin, enablePie, enableBuildId, enableGold,
+		                posixThreads, enablePlugin, enablePie, enableBuildId,
 		                withArch, withTune, withSysroot,
 		                customCFlags, customCxxFlags, additionalConfigureFlags);
 	}

@@ -139,7 +139,6 @@ private:
 	time_t m_lastDisplayStringUpdate{ 0 };
 	std::future<SCompilerScanResult> m_scanFuture;
 	std::future<std::string> m_installDirBrowseFuture;
-	std::future<std::string> m_lldBrowseFuture;
 	CLogSaver m_logSaver;
 
 	std::vector<SLogEntry> m_globalLog;
@@ -195,7 +194,6 @@ private:
 	std::atomic<bool> m_isScanningDirectory{ false };
 	std::atomic<bool> m_scanCompleted{ false };
 	bool m_installDirBrowseActive{ false };
-	bool m_lldBrowseActive{ false };
 
 	char m_tokenInputBuffer[128]{};
 	char m_presetNameBuffer[256]{};

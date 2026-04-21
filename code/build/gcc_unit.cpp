@@ -286,11 +286,6 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 			cmd << " --disable-linker-build-id";
 		}
 
-		if (config.enableGold)
-		{
-			cmd << " --enable-gold";
-		}
-
 		if (!config.withArch.value.empty())
 		{
 			cmd << " --with-arch=" << config.withArch;

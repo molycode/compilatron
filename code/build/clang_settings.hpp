@@ -47,14 +47,12 @@ struct SClangSettings final
 	SProperty<bool>          enableLibffi{           "clang_enableLibffi",           "libffi",               false                       };
 	SProperty<bool>          enableTerminfo{         "clang_enableTerminfo",         "Terminfo",             true                        };
 	SProperty<bool>          enableLibxml2{          "clang_enableLibxml2",          "libxml2",              false                       };
-	SProperty<bool>          enableGoldPlugin{       "clang_enableGoldPlugin",       "Build gold plugin",    false                       };
 	SProperty<bool>          enableAssertions{       "clang_enableAssertions",       "Assertions",           false                       };
 	SProperty<bool>          buildLlvmDylib{         "clang_buildLlvmDylib",         "Build LLVM dylib",     false                       };
 	SProperty<bool>          linkLlvmDylib{          "clang_linkLlvmDylib",          "Link LLVM dylib",      false                       };
 	SProperty<bool>          installUtils{           "clang_installUtils",           "Install utils",        true                        };
 	SProperty<std::string>   ltoMode{               "clang_ltoMode",                "LTO mode",             "Off"                       };
-	SProperty<std::string>   linker{                 "clang_linker",                 "Linker",               "default"                   };
-	SProperty<std::string>   lldOverridePath{        "clang_lldOverridePath",        "lld override path",    ""                          };
+	SProperty<std::string>   linker{                 "clang_linker",                 "Linker",               "bfd"                       };
 	SProperty<bool>          optimizedTablegen{      "clang_optimizedTablegen",      "Optimized TableGen",   true                        };
 
 	SProperty<ECMakeGenerator> generator{            "clang_generator",              "Generator",            ECMakeGenerator::Ninja      };
@@ -71,8 +69,8 @@ struct SClangSettings final
 		                projectOpenmp, projectPolly, projectPstl, projectMlir, projectFlang,
 		                projectBolt, customProjects,
 		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableLibffi,
-		                enableTerminfo, enableLibxml2, enableGoldPlugin, enableAssertions, buildLlvmDylib, linkLlvmDylib,
-		                installUtils, ltoMode, linker, lldOverridePath, optimizedTablegen,
+		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
+		                installUtils, ltoMode, linker, optimizedTablegen,
 		                generator, numNinjaLinkJobs, buildWithInstallRpath, additionalConfigureFlags);
 	}
 
@@ -85,8 +83,8 @@ struct SClangSettings final
 		                projectOpenmp, projectPolly, projectPstl, projectMlir, projectFlang,
 		                projectBolt, customProjects,
 		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableLibffi,
-		                enableTerminfo, enableLibxml2, enableGoldPlugin, enableAssertions, buildLlvmDylib, linkLlvmDylib,
-		                installUtils, ltoMode, linker, lldOverridePath, optimizedTablegen,
+		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
+		                installUtils, ltoMode, linker, optimizedTablegen,
 		                generator, numNinjaLinkJobs, buildWithInstallRpath, additionalConfigureFlags);
 	}
 

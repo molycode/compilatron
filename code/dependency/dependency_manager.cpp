@@ -166,69 +166,6 @@ void CDependencyManager::ScanDependency(SAdvancedDependencyInfo& dep)
 
 	if (dep.category == EDependencyCategory::Library)
 	{
-		if (dep.identifier == "binutils")
-		{
-			// Enumerate every local install under dependencies/.
-			// Full source tree: subdir/include/plugin-api.h — store include/ as the path.
-			// Old single-header: subdir/plugin-api.h directly — store subdir as the path.
-			std::string const depsDir{ g_dataDir + "/dependencies" };
-			std::error_code scanEc;
-
-			if (fs::exists(depsDir))
-			{
-				for (auto const& entry : fs::directory_iterator(depsDir, scanEc))
-				{
-					if (entry.is_directory())
-					{
-						fs::path const includeDir{ entry.path() / "include" };
-						std::string locPath;
-
-						if (fs::exists(includeDir / "plugin-api.h"))
-						{
-							locPath = includeDir.string();
-						}
-						else if (fs::exists(entry.path() / "plugin-api.h"))
-						{
-							locPath = entry.path().string();
-						}
-
-						if (!locPath.empty())
-						{
-							std::string const dirName{ entry.path().filename().string() };
-							std::string const version{ ExtractVersionNumbers(dirName) };
-
-							SDependencyLocation loc;
-							loc.type = EInstallLocation::LocalApp;
-							loc.path = locPath;
-							loc.isWorking = true;
-							loc.priority = 1;
-							loc.version = version.empty() ? "unknown" : version;
-							dep.foundLocations.push_back(loc);
-						}
-					}
-				}
-			}
-
-			if (fs::exists("/usr/include/plugin-api.h"))
-			{
-				SDependencyLocation loc;
-				loc.type = EInstallLocation::System;
-				loc.path = "/usr/include";
-				loc.isWorking = true;
-				loc.priority = 2;
-				loc.version = DetectVersion("", "ld --version 2>/dev/null | head -1");
-				dep.foundLocations.push_back(loc);
-			}
-
-			if (!dep.foundLocations.empty())
-			{
-				dep.selectedLocation = &dep.foundLocations.front();
-				dep.status = EDependencyStatus::Available;
-			}
-
-			return;
-		}
-
 		if (!dep.checkCommand.empty())
 		{
 			auto const result = CProcessExecutor::Execute(dep.checkCommand);
@@ -812,26 +749,6 @@ void CDependencyManager::InitializeLibraries()
 		m_dependencies.push_back(std::move(dep));
 	}
 
-	// binutils source tree — required for GCC --enable-gold and Clang LLVMgold.so plugin.
-	// Full source is extracted locally from a binutils tarball — no sudo required.
-	{
-		auto dep = std::make_unique<SAdvancedDependencyInfo>();
-		dep->name = "binutils";
-		dep->identifier = "binutils";
-		dep->description = "binutils source tree (enables GCC gold linker and Clang LLVMgold.so plugin)";
-		dep->systemPackage = "binutils-dev"; // Ubuntu/Debian; Fedora/openSUSE: binutils-devel; Arch: binutils
-		dep->category = EDependencyCategory::Library;
-		dep->requiredForGcc = false;
-		dep->requiredForClang = false; // Updated dynamically based on enableGold/enableGoldPlugin settings
-
-		// Detection and version are handled directly in ScanDependency via filesystem scan
-
-		// Non-null installFunc marks this dep as user-locatable (shows Locate/Override buttons).
-		// Actual installation goes through DownloadAndBuildLocal via the Locate dialog path.
-		dep->installFunc = []() -> bool { return false; };
-
-		m_dependencies.push_back(std::move(dep));
-	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1090,74 +1007,6 @@ bool CDependencyManager::DownloadAndBuildLocal(SAdvancedDependencyInfo const& de
 	else
 	{
 		gDepLog.Info(Tge::Logging::ETarget::File, "Source file already exists: {}", sourceTarball);
-	}
-
-	if (dep.identifier == "binutils")
-	{
-		std::string const actualDirName{ PeekArchiveDirectory(sourceTarball) };
-		bool result{ false };
-
-		if (actualDirName.empty())
-		{
-			error = std::format("Failed to peek archive directory for binutils: {}", filename);
-			gDepLog.Warning(Tge::Logging::ETarget::File, "DownloadAndBuildLocal: {}", error);
-		}
-		else
-		{
-			std::string const extractedDir{ sourceDir + "/" + actualDirName };
-			std::string const destDir{ depsDir + "/" + actualDirName };
-
-			if (fs::exists(extractedDir))
-			{
-				std::error_code removeEc;
-				fs::remove_all(extractedDir, removeEc);
-			}
-
-			std::string const extractCmd{ "cd \"" + sourceDir + "\" && tar -xf \"" + filename + "\"" };
-			gDepLog.Info(Tge::Logging::ETarget::File, "Extracting binutils: {}", extractCmd);
-			auto const extractResult = CProcessExecutor::Execute(extractCmd);
-
-			if (!extractResult.success)
-			{
-				error = std::format("Failed to extract binutils: {}",
-					extractResult.output.empty() ? extractResult.errorMessage : extractResult.output);
-				gDepLog.Warning(Tge::Logging::ETarget::File, "DownloadAndBuildLocal: {}", error);
-			}
-			else if (!fs::exists(extractedDir))
-			{
-				error = std::format("Extraction succeeded but directory not found: {}", extractedDir);
-				gDepLog.Warning(Tge::Logging::ETarget::File, "DownloadAndBuildLocal: {}", error);
-			}
-			else
-			{
-				if (fs::exists(destDir))
-				{
-					std::error_code removeEc;
-					fs::remove_all(destDir, removeEc);
-				}
-
-				std::error_code renameEc;
-				fs::rename(extractedDir, destDir, renameEc);
-
-				if (renameEc)
-				{
-					error = std::format("Failed to move {} to {}: {}", extractedDir, destDir, renameEc.message());
-					gDepLog.Warning(Tge::Logging::ETarget::File, "DownloadAndBuildLocal: {}", error);
-				}
-				else if (!fs::exists(destDir + "/include/plugin-api.h"))
-				{
-					error = std::format("Extraction succeeded but include/plugin-api.h not found in {}", destDir);
-					gDepLog.Warning(Tge::Logging::ETarget::File, "DownloadAndBuildLocal: {}", error);
-				}
-				else
-				{
-					gDepLog.Info(Tge::Logging::ETarget::Console, "binutils: source tree installed to {}", destDir);
-					result = true;
-				}
-			}
-		}
-
-		return result;
 	}
 
 	// Use archive peeking to determine the actual extraction directory

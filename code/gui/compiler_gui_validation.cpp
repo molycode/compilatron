@@ -197,61 +197,51 @@ std::string CCompilerGUI::FindLldForTab(SCompilerTab const& tab) const
 
 	if (tab.kind == ECompilerKind::Clang && tab.clangSettings.linker.value == "lld")
 	{
-		if (!tab.clangSettings.lldOverridePath.value.empty())
+		std::string const actualCompiler{ GetActualCompilerForTab(tab) };
+		std::error_code ec;
+		std::filesystem::path const resolved{ std::filesystem::canonical(actualCompiler, ec) };
+		std::filesystem::path const compilerDir{ ec
+			? std::filesystem::path{ actualCompiler }.parent_path()
+			: resolved.parent_path() };
+
+		std::filesystem::path const lldInCompilerDir{ compilerDir / "ld.lld" };
+
+		if (std::filesystem::exists(lldInCompilerDir))
 		{
-			if (std::filesystem::exists(tab.clangSettings.lldOverridePath.value))
-			{
-				result = tab.clangSettings.lldOverridePath.value;
-			}
+			result = lldInCompilerDir.string();
 		}
 		else
 		{
-			std::string const actualCompiler{ GetActualCompilerForTab(tab) };
-			std::error_code ec;
-			std::filesystem::path const resolved{ std::filesystem::canonical(actualCompiler, ec) };
-			std::filesystem::path const compilerDir{ ec
-				? std::filesystem::path{ actualCompiler }.parent_path()
-				: resolved.parent_path() };
+			char const* pathEnv{ std::getenv("PATH") };
 
-			std::filesystem::path const lldInCompilerDir{ compilerDir / "ld.lld" };
-
-			if (std::filesystem::exists(lldInCompilerDir))
+			if (pathEnv != nullptr)
 			{
-				result = lldInCompilerDir.string();
-			}
-			else
-			{
-				char const* pathEnv{ std::getenv("PATH") };
+				std::string_view pathStr{ pathEnv };
+				size_t start{ 0 };
 
-				if (pathEnv != nullptr)
+				while (result.empty())
 				{
-					std::string_view pathStr{ pathEnv };
-					size_t start{ 0 };
+					size_t const colon{ pathStr.find(':', start) };
+					std::string_view const dir{ colon == std::string_view::npos
+						? pathStr.substr(start)
+						: pathStr.substr(start, colon - start) };
 
-					while (result.empty())
+					if (!dir.empty())
 					{
-						size_t const colon{ pathStr.find(':', start) };
-						std::string_view const dir{ colon == std::string_view::npos
-							? pathStr.substr(start)
-							: pathStr.substr(start, colon - start) };
+						std::filesystem::path const candidate{ std::filesystem::path{ dir } / "ld.lld" };
 
-						if (!dir.empty())
+						if (std::filesystem::exists(candidate))
 						{
-							std::filesystem::path const candidate{ std::filesystem::path{ dir } / "ld.lld" };
-
-							if (std::filesystem::exists(candidate))
-							{
-								result = candidate.string();
-							}
+							result = candidate.string();
 						}
-
-						if (colon == std::string_view::npos)
-						{
-							break;
-						}
-
-						start = colon + 1;
 					}
+
+					if (colon == std::string_view::npos)
+					{
+						break;
+					}
+
+					start = colon + 1;
 				}
 			}
 		}
