@@ -8,7 +8,7 @@
 namespace Ctrn
 {
 // Global singleton instance definitions - static objects with automatic initialization
-SCpuInfo g_cpuInfo = SCpuInfo::Detect();
+SCpuInfo g_cpuInfo{};
 SBuildSettings g_buildSettings;
 CPresetManager g_presetManager;
 CDependencyManager g_dependencyManager;

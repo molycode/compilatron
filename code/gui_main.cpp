@@ -71,6 +71,8 @@ int main(int argc, char* argv[])
 
 	Tge::Logging::GetLogSystem().Initialize("compilatron", Ctrn::g_dataDir + "/logs", Ctrn::g_dataDir + "/configs", Tge::Logging::ETimestampMode::WallClock);
 
+	Ctrn::g_cpuInfo = Ctrn::SCpuInfo::Detect();
+
 	// Remove any leftover debug.log files from previous sessions
 	std::filesystem::path dataDirPath(Ctrn::g_dataDir);
 	std::string debugLogPath{ (dataDirPath / "debug.log").string() };
@@ -86,8 +88,7 @@ int main(int argc, char* argv[])
 	Ctrn::gLog.Info(Tge::Logging::ETarget::File, "Main: g_dataDir: {}", Ctrn::g_dataDir);
 
 	// Update PATH with any locally installed dependencies before CDependencyChecker runs.
-	// Dep manager is not yet initialized here — this only calls UpdateEnvironmentPaths().
-	Ctrn::g_dependencyManager.ScanAllDependencies();
+	Ctrn::g_dependencyManager.UpdateEnvironmentPaths();
 
 	Ctrn::CDependencyChecker depChecker;
 
@@ -341,6 +342,9 @@ int main(int argc, char* argv[])
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
+
+	mainGui.reset();
+	depDialog.reset();
 
 	Ctrn::gLog.Info(Tge::Logging::ETarget::File, "Main: Compilatron shutting down...");
 	Tge::Logging::GetLogSystem().Terminate();
