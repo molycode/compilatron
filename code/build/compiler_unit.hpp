@@ -174,5 +174,6 @@ protected:
 	virtual std::string              GenerateBuildCommand()   const = 0;
 	virtual std::string              GenerateInstallCommand() const = 0;
 	virtual bool                     PostDownloadHook(std::string_view sourcesDir);
+	[[nodiscard]] virtual bool       PreConfigureHook();
 };
 } // namespace Ctrn

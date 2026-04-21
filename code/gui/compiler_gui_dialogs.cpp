@@ -1109,7 +1109,11 @@ void CCompilerGUI::RenderGccAdvancedDialog()
 
 				if (ImGui::IsItemHovered())
 				{
-					ImGui::SetTooltip("--enable-gold: Build ld.gold as part of the GCC installation (from bundled binutils source)");
+					ImGui::BeginTooltip();
+					ImGui::Text("--enable-gold: set gold as the default linker in the built GCC.");
+					ImGui::Text("Requires gold to be installed on the build system (binutils < 2.44).");
+					ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "gold was removed from binutils 2.44+. Consider using lld instead.");
+					ImGui::EndTooltip();
 				}
 
 				ImGui::Text("Target arch:");
@@ -1695,15 +1699,15 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					ImGui::BeginTooltip();
 					ImGui::Text("Build gold linker plugin (LLVMgold.so)");
 					ImGui::Text("Enables LTO with the GNU gold linker in the compiled Clang.");
-					ImGui::Text("Requires binutils-include — install via the Dependencies window.");
+					ImGui::Text("Requires binutils — install via the Dependencies window.");
 					ImGui::EndTooltip();
 				}
 
 				if (clang.enableGoldPlugin.value &&
-				    g_dependencyManager.GetSelectedPath("binutils-include").empty())
+				    g_dependencyManager.GetSelectedPath("binutils").empty())
 				{
 					ImGui::SameLine();
-					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.1f, 1.0f), "binutils-include missing");
+					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.1f, 1.0f), "binutils missing");
 				}
 
 				ImGui::Text("%s:", clang.ltoMode.uiName.data());

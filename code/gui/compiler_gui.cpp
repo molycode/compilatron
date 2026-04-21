@@ -179,7 +179,8 @@ void CCompilerGUI::Render()
 			{
 				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableGoldPlugin.value;
 			}) };
-		g_dependencyManager.SetDynamicRequired("binutils-include", false, goldPluginEnabled);
+
+		g_dependencyManager.SetDynamicRequired("binutils", false, goldPluginEnabled);
 
 		m_showDependencyWindow = g_dependencyWindow.Render();
 	}

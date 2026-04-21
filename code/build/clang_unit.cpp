@@ -534,7 +534,7 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 
 		if (config.enableGoldPlugin)
 		{
-			std::string const binutilsIncDir{ g_dependencyManager.GetSelectedPath("binutils-include") };
+			std::string const binutilsIncDir{ g_dependencyManager.GetSelectedPath("binutils") };
 
 			if (!binutilsIncDir.empty())
 			{

@@ -477,6 +477,12 @@ bool CCompilerUnit::PostDownloadHook(std::string_view)
 }
 
 //////////////////////////////////////////////////////////////////////////
+bool CCompilerUnit::PreConfigureHook()
+{
+	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
 bool CCompilerUnit::ValidateSources()
 {
 	m_unitLog.Info(Tge::Logging::ETarget::Console, "Validating sources...");
@@ -642,56 +648,64 @@ void CCompilerUnit::GenerateCommands()
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerUnit::Configure()
 {
-	SetStatus(ECompilerStatus::Building, "Configuring");
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Configuring build...");
+	bool success{ false };
 
-	namespace fs = std::filesystem;
-	fs::create_directories(GetBuildPath());
-	CheckAndCleanCompilerCache(GetBuildPath());
-
-	// Always remove CMakeCache.txt before configuring to prevent stale cmake flags
-	// from persisting across builds when configuration options change.
-	// Object files in subdirectories are unaffected — only cmake's variable cache is cleared.
-	fs::path const cmakeCache{ std::string{GetBuildPath()} + "/CMakeCache.txt" };
-	if (fs::exists(cmakeCache))
+	if (PreConfigureHook())
 	{
-		std::error_code ec;
-		fs::remove(cmakeCache, ec);
+		SetStatus(ECompilerStatus::Building, "Configuring");
+		m_unitLog.Info(Tge::Logging::ETarget::Console, "Configuring build...");
 
-		if (ec)
+		namespace fs = std::filesystem;
+		fs::create_directories(GetBuildPath());
+		CheckAndCleanCompilerCache(GetBuildPath());
+
+		// Always remove CMakeCache.txt before configuring to prevent stale cmake flags
+		// from persisting across builds when configuration options change.
+		// Object files in subdirectories are unaffected — only cmake's variable cache is cleared.
+		fs::path const cmakeCache{ std::string{GetBuildPath()} + "/CMakeCache.txt" };
+
+		if (fs::exists(cmakeCache))
 		{
-			gLog.Warning(Tge::Logging::ETarget::Console, "Failed to remove CMakeCache.txt: {}", ec.message());
+			std::error_code ec;
+			fs::remove(cmakeCache, ec);
+
+			if (ec)
+			{
+				gLog.Warning(Tge::Logging::ETarget::Console, "Failed to remove CMakeCache.txt: {}", ec.message());
+			}
+			else
+			{
+				m_unitLog.Info(Tge::Logging::ETarget::Console, "Cleared cmake cache");
+			}
+		}
+
+		if (!m_configureCommand.empty())
+		{
+			m_unitLog.Info(Tge::Logging::ETarget::Console, "Configure command: " + m_configureCommand);
+			success = ExecuteCommand(m_configureCommand);
+
+			if (success)
+			{
+				m_unitLog.Info(Tge::Logging::ETarget::Console, "Configuration completed successfully");
+				SetProgress(0.4f);
+			}
+			else if (!m_shouldStop)
+			{
+				m_unitLog.Error(Tge::Logging::ETarget::Console, "Configuration failed");
+				SetFailureReason("Configure command failed");
+				ReportProgress(ECompilerStatus::Failed, 0.4f, "Configuration failed");
+			}
 		}
 		else
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Cleared cmake cache");
-		}
-	}
-
-	bool success{ false };
-
-	if (!m_configureCommand.empty())
-	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Configure command: " + m_configureCommand);
-		success = ExecuteCommand(m_configureCommand);
-
-		if (success)
-		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Configuration completed successfully");
-			SetProgress(0.4f);
-		}
-		else if (!m_shouldStop)
-		{
-			m_unitLog.Error(Tge::Logging::ETarget::Console, "Configuration failed");
-			SetFailureReason("Configure command failed");
+			gLog.Warning(Tge::Logging::ETarget::File, "Configure: command is empty for '{}' — was Initialize() called?", m_name);
+			SetFailureReason("Configure command could not be generated");
 			ReportProgress(ECompilerStatus::Failed, 0.4f, "Configuration failed");
 		}
 	}
 	else
 	{
-		gLog.Warning(Tge::Logging::ETarget::File, "Configure: command is empty for '{}' — was Initialize() called?", m_name);
-		SetFailureReason("Configure command could not be generated");
-		ReportProgress(ECompilerStatus::Failed, 0.4f, "Configuration failed");
+		SetStatus(ECompilerStatus::Failed, "Pre-configure step failed");
 	}
 
 	return success;
