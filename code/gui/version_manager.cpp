@@ -23,14 +23,11 @@ namespace fs = std::filesystem;
 void CVersionManager::Initialize()
 {
 	InitializeDefaults();
-	gLog.Info(Tge::Logging::ETarget::File, "VersionManager: About to call LoadFromCache");
 
 	if (!LoadFromCache())
 	{
 		gLog.Info(Tge::Logging::ETarget::File, "VersionManager: No cache found, will fetch on demand");
 	}
-
-	gLog.Info(Tge::Logging::ETarget::File, "VersionManager: LoadFromCache completed");
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -478,7 +475,6 @@ std::string CVersionManager::GetConfigFilePath() const
 bool CVersionManager::LoadFromCache()
 {
 	std::string const configPath{ GetConfigFilePath() };
-	gLog.Info(Tge::Logging::ETarget::File, "VersionManager: LoadFromCache: Starting to load from {}", configPath);
 
 	std::ifstream file(configPath);
 	bool success{ false };

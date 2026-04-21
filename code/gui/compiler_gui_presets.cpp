@@ -808,8 +808,6 @@ void CCompilerGUI::CreateTabsFromBuildSettings(SBuildSettings const& settings)
 
 			m_compilerTabs.push_back(std::move(tab));
 			CreateUnitForTab(m_compilerTabs.back());
-
-			gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Created tab from preset entry (index={})", m_compilerTabs.size() - 1);
 		}
 	}
 

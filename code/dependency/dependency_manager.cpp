@@ -319,8 +319,6 @@ std::string CDependencyManager::DetectVersion(std::string_view path, std::string
 			command = std::format("{} {}", path, versionCommand);
 		}
 
-		gDepLog.Info(Tge::Logging::ETarget::File, "DetectVersion executing: {}", command);
-
 		auto const procResult = CProcessExecutor::Execute(command);
 
 		if (procResult.success || !procResult.output.empty())

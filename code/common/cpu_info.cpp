@@ -23,7 +23,6 @@ SCpuInfo SCpuInfo::Detect()
 
 	std::call_once(s_detected, []()
 	{
-		gLog.Info(Tge::Logging::ETarget::File, "SCpuInfo: Starting CPU detection");
 		s_cachedInfo = DetectInternal();
 	});
 
@@ -41,8 +40,6 @@ SCpuInfo SCpuInfo::DetectInternal()
 		info.logicalCores = 4; // Fallback
 	}
 
-	gLog.Info(Tge::Logging::ETarget::File, "SCpuInfo: Detected logical cores: {}", info.logicalCores);
-
 	// Detect system memory
 #ifdef CTRN_PLATFORM_WINDOWS
 	// Windows: Get total physical memory
@@ -53,7 +50,6 @@ SCpuInfo SCpuInfo::DetectInternal()
 	{
 		info.totalMemoryGB     = static_cast<double>(memInfo.ullTotalPhys) / (1024.0 * 1024.0 * 1024.0);
 		info.availableMemoryGB = static_cast<double>(memInfo.ullAvailPhys) / (1024.0 * 1024.0 * 1024.0);
-		gLog.Info(Tge::Logging::ETarget::File, "SCpuInfo: Windows: Detected {} GiB memory ({} GiB available)", info.totalMemoryGB, info.availableMemoryGB);
 	}
 	else
 	{
@@ -132,7 +128,6 @@ SCpuInfo SCpuInfo::DetectInternal()
 			}
 		}
 
-		gLog.Info(Tge::Logging::ETarget::File, "SCpuInfo: Linux: Detected {:.2f} GiB total, {:.2f} GiB available from /proc/meminfo", info.totalMemoryGB, info.availableMemoryGB);
 	}
 #endif // CTRN_PLATFORM_WINDOWS
 
@@ -237,7 +232,7 @@ SCpuInfo SCpuInfo::DetectInternal()
 	}
 #endif // CTRN_PLATFORM_WINDOWS
 
-	gLog.Info(Tge::Logging::ETarget::File, "SCpuInfo: CPU detection completed: logical={}, physical={}, memory={}GiB",
+	gLog.Info(Tge::Logging::ETarget::File, "SCpuInfo: {}/{} cores, {:.2f} GiB RAM",
 		info.logicalCores, info.physicalCores, info.totalMemoryGB);
 	return info;
 }

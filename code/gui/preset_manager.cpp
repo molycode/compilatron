@@ -273,7 +273,10 @@ bool CPresetManager::LoadPreset(std::string_view name, SBuildSettings& settings)
 					}
 				}
 
-				gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Restored {} custom compiler(s) from preset", numCustom);
+				if (numCustom > 0)
+				{
+					gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Restored {} custom compiler(s) from preset", numCustom);
+				}
 
 				g_compilerRegistry.Scan();
 				g_dependencyManager.ScanAllDependencies();
