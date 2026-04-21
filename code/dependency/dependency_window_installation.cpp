@@ -67,6 +67,7 @@ void CDependencyWindow::UpdateInstallationProgress()
 			m_installationStatus[identifier] = "Installation completed successfully";
 			gDepLog.Info(Tge::Logging::ETarget::Console, "Successfully installed {} to ./dependencies/", result->unitName);
 			g_dependencyManager.ScanAllDependencies();
+			LoadLocationSelectionsFromPresets();
 			m_columnWidthsDirty = true;
 		}
 		else

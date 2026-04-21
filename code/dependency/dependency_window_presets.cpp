@@ -76,7 +76,7 @@ std::string CDependencyWindow::GetPresetDescription(std::string_view presetName)
 
 	if (file.is_open())
 	{
-		nlohmann::json parsed{ nlohmann::json::parse(file, nullptr, false) };
+		auto parsed = nlohmann::json::parse(file, nullptr, false);
 
 		if (!parsed.is_discarded() && parsed.contains("description") && parsed["description"].is_string())
 		{
