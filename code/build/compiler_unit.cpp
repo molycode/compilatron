@@ -542,7 +542,7 @@ bool CCompilerUnit::DownloadSources()
 			else
 			{
 				m_unitLog.Info(Tge::Logging::ETarget::Console, "Target '" + targetBranch + "' is a branch, updating branch...");
-				checkoutCmd = "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout -B " + targetBranch + " origin/" + targetBranch;
+				checkoutCmd = "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout -B " + targetBranch + " FETCH_HEAD";
 			}
 
 			if (ExecuteCommand(checkoutCmd))
