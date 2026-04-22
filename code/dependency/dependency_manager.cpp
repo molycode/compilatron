@@ -228,7 +228,7 @@ std::vector<SDependencyLocation> CDependencyManager::FindAllLocations(SAdvancedD
 	std::vector<SDependencyLocation> locations;
 
 	// Scan system paths
-	for (auto const& path : GetSystemPaths())
+	for (auto const& path : GetSystemBinPaths())
 	{
 		auto location = ScanLocation(EInstallLocation::System, path, dep);
 		if (!location.path.empty())
@@ -238,7 +238,7 @@ std::vector<SDependencyLocation> CDependencyManager::FindAllLocations(SAdvancedD
 	}
 
 	// Scan user paths
-	for (auto const& path : GetUserPaths())
+	for (auto const& path : GetUserBinPaths())
 	{
 		auto location = ScanLocation(EInstallLocation::UserWide, path, dep);
 		if (!location.path.empty())
@@ -382,27 +382,6 @@ bool CDependencyManager::TestFunctionality(std::string_view path, std::string_vi
 }
 
 //////////////////////////////////////////////////////////////////////////
-std::vector<std::string> CDependencyManager::GetSystemPaths() const
-{
-	return {"/usr/bin", "/usr/local/bin", "/bin", "/sbin", "/usr/sbin"};
-}
-
-//////////////////////////////////////////////////////////////////////////
-std::vector<std::string> CDependencyManager::GetUserPaths() const
-{
-	std::vector<std::string> paths;
-
-	char const* home = getenv("HOME");
-
-	if (home != nullptr)
-	{
-		paths.push_back(std::string(home) + "/.local/bin");
-		paths.push_back(std::string(home) + "/bin");
-	}
-
-	return paths;
-}
-
 //////////////////////////////////////////////////////////////////////////
 std::vector<std::string> CDependencyManager::GetLocalPaths() const
 {
@@ -445,7 +424,7 @@ void CDependencyManager::UpdateEnvironmentPaths()
 		}
 	}
 
-	for (auto const& userPath : GetUserPaths())
+	for (auto const& userPath : GetUserBinPaths())
 	{
 		if (fs::exists(userPath))
 		{

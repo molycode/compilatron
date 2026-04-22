@@ -51,22 +51,15 @@ void CCompilerGUI::Initialize()
 	{
 		SBuildSettings loadedSettings;
 
-		if (m_presetManager.LoadPreset(m_currentPresetName, loadedSettings))
+		if (!m_presetManager.LoadPreset(m_currentPresetName, loadedSettings))
 		{
-			g_buildSettings.installDirectory = loadedSettings.installDirectory;
-			g_buildSettings.globalHostCompiler = loadedSettings.globalHostCompiler;
-			g_buildSettings.dependencyLocationSelections = loadedSettings.dependencyLocationSelections;
-			CreateTabsFromBuildSettings(loadedSettings);
+			gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Preset '{}' unreadable — starting with defaults", m_currentPresetName);
 		}
-		else
-		{
-			gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Creating preset '{}'", m_currentPresetName);
 
-			if (!m_presetManager.SavePreset(m_currentPresetName, "", loadedSettings))
-			{
-				gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Failed to create preset '{}'", m_currentPresetName);
-			}
-		}
+		g_buildSettings.installDirectory = loadedSettings.installDirectory;
+		g_buildSettings.globalHostCompiler = loadedSettings.globalHostCompiler;
+		g_buildSettings.dependencyLocationSelections = loadedSettings.dependencyLocationSelections;
+		CreateTabsFromBuildSettings(loadedSettings);
 	}
 
 	// Raw format: Console colors carry level signal; timestamp + message is sufficient

@@ -118,8 +118,6 @@ private:
 	bool BuildFromSource(SAdvancedDependencyInfo const& dep, std::string_view sourceDir, std::string_view installDir, std::string& error);
 	std::string PeekArchiveDirectory(std::string_view archivePath) const;
 
-	std::vector<std::string> GetSystemPaths() const;
-	std::vector<std::string> GetUserPaths() const;
 	std::vector<std::string> GetLocalPaths() const;
 
 	void InitializeBuildTools();

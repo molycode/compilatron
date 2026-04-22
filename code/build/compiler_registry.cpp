@@ -56,7 +56,17 @@ std::string ExtractVersionNumbers(std::string_view versionString)
 
 std::vector<std::string> GetPathDirs()
 {
+	std::unordered_set<std::string> seen;
 	std::vector<std::string> dirs;
+
+	auto addIfNew = [&](std::string const& dir)
+	{
+		if (!dir.empty() && seen.insert(dir).second)
+		{
+			dirs.push_back(dir);
+		}
+	};
+
 	char const* pathEnv{ getenv("PATH") };
 
 	if (pathEnv != nullptr)
@@ -67,11 +77,20 @@ std::vector<std::string> GetPathDirs()
 
 		while (std::getline(ss, dir, ':'))
 		{
-			if (!dir.empty())
-			{
-				dirs.push_back(dir);
-			}
+			addIfNew(dir);
 		}
+	}
+
+	// Always check well-known system and user paths — PATH may be stripped in desktop/Flatpak
+	// environments. Uses the same path lists as the dependency manager.
+	for (std::string const& dir : GetSystemBinPaths())
+	{
+		addIfNew(dir);
+	}
+
+	for (std::string const& dir : GetUserBinPaths())
+	{
+		addIfNew(dir);
 	}
 
 	return dirs;

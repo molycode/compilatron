@@ -3,6 +3,7 @@
 #include "dependency/dependency_manager.hpp"
 #include "dependency/dependency_window.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 
 namespace Ctrn
@@ -40,12 +41,24 @@ std::string GetEffectiveHostCompiler()
 
 	if (result.empty())
 	{
+		std::string clangFallback;
+
 		for (auto const& compiler : g_compilerRegistry.GetCompilers())
 		{
 			if (result.empty() && compiler.kind == ECompilerKind::Gcc)
 			{
 				result = compiler.path;
 			}
+
+			if (clangFallback.empty() && compiler.kind == ECompilerKind::Clang)
+			{
+				clangFallback = compiler.path;
+			}
+		}
+
+		if (result.empty())
+		{
+			result = clangFallback;
 		}
 	}
 
@@ -73,12 +86,24 @@ SCompiler GetEffectiveHostSCompiler()
 
 	if (g_buildSettings.globalHostCompiler.empty())
 	{
+		SCompiler clangFallback;
+
 		for (auto const& compiler : g_compilerRegistry.GetCompilers())
 		{
 			if (result.path.empty() && compiler.kind == ECompilerKind::Gcc)
 			{
 				result = compiler;
 			}
+
+			if (clangFallback.path.empty() && compiler.kind == ECompilerKind::Clang)
+			{
+				clangFallback = compiler;
+			}
+		}
+
+		if (result.path.empty())
+		{
+			result = clangFallback;
 		}
 	}
 	else
@@ -87,6 +112,25 @@ SCompiler GetEffectiveHostSCompiler()
 	}
 
 	return result;
+}
+
+std::vector<std::string> GetSystemBinPaths()
+{
+	return { "/usr/bin", "/usr/local/bin", "/bin", "/usr/sbin", "/sbin" };
+}
+
+std::vector<std::string> GetUserBinPaths()
+{
+	std::vector<std::string> paths;
+	char const* home{ getenv("HOME") };
+
+	if (home != nullptr)
+	{
+		paths.push_back(std::string(home) + "/.local/bin");
+		paths.push_back(std::string(home) + "/bin");
+	}
+
+	return paths;
 }
 
 // Check if a path contains characters problematic for build systems (CMake, autoconf, shell)

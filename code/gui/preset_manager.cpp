@@ -236,12 +236,17 @@ bool CPresetManager::LoadPreset(std::string_view name, SBuildSettings& settings)
 {
 	gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Loading preset: {}", name);
 
-	bool result{ false };
+	bool result{ true };
 	std::string const filePath{ GetPresetFilePath(name) };
 
 	if (!std::filesystem::exists(filePath))
 	{
-		gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: Load failed: preset file not found");
+		gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Preset '{}' not found — creating with defaults", name);
+
+		if (!SavePreset(name, "", settings))
+		{
+			gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: Failed to save default preset '{}'", name);
+		}
 	}
 	else
 	{
@@ -250,6 +255,7 @@ bool CPresetManager::LoadPreset(std::string_view name, SBuildSettings& settings)
 		if (!file.is_open())
 		{
 			gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: Failed to open preset file: {}", filePath);
+			result = false;
 		}
 		else
 		{
@@ -258,6 +264,7 @@ bool CPresetManager::LoadPreset(std::string_view name, SBuildSettings& settings)
 			if (parsed.is_discarded())
 			{
 				gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: Load failed: invalid JSON in '{}'", filePath);
+				result = false;
 			}
 			else
 			{
@@ -277,34 +284,23 @@ bool CPresetManager::LoadPreset(std::string_view name, SBuildSettings& settings)
 				{
 					gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Restored {} custom compiler(s) from preset", numCustom);
 				}
-
-				g_compilerRegistry.Scan();
-				g_dependencyManager.ScanAllDependencies();
-
-				if (!settings.globalHostCompiler.empty())
-				{
-					bool found{ false };
-
-					for (auto const& compiler : g_compilerRegistry.GetCompilers())
-					{
-						if (!found && compiler.path == settings.globalHostCompiler)
-						{
-							found = true;
-						}
-					}
-
-					if (!found)
-					{
-						// Compiler is outside PATH (e.g. a locally built compiler) — add it explicitly
-						g_compilerRegistry.AddCompiler(settings.globalHostCompiler);
-					}
-				}
-
-				gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Successfully loaded preset: {} with {} compiler entries",
-					name, settings.compilerEntries.size());
-				result = true;
 			}
 		}
+	}
+
+	if (result)
+	{
+		g_compilerRegistry.Scan();
+		g_dependencyManager.ScanAllDependencies();
+
+		if (!settings.globalHostCompiler.empty() && !g_compilerRegistry.Contains(settings.globalHostCompiler))
+		{
+			// Compiler is outside PATH (e.g. a locally built compiler) — add it explicitly
+			g_compilerRegistry.AddCompiler(settings.globalHostCompiler);
+		}
+
+		gLog.Info(Tge::Logging::ETarget::File, "PresetManager: Loaded preset: {} with {} compiler entries",
+			name, settings.compilerEntries.size());
 	}
 
 	return result;

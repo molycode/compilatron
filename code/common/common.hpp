@@ -56,6 +56,14 @@ extern std::atomic<bool> g_mainWindowNeedsResize;
 // Prefers g_buildSettings.globalHostCompiler; falls back to first GCC compiler in the registry.
 [[nodiscard]] SCompiler GetEffectiveHostSCompiler();
 
+// Returns hardcoded system binary directories (/usr/bin, /usr/local/bin, etc.).
+// Use this instead of duplicating the list in each subsystem.
+[[nodiscard]] std::vector<std::string> GetSystemBinPaths();
+
+// Returns user-local binary directories (~/.local/bin, ~/bin).
+// Returns empty if HOME is unset.
+[[nodiscard]] std::vector<std::string> GetUserBinPaths();
+
 // Utility function: Check if a path contains characters problematic for build systems
 // Returns true if path contains spaces, parentheses, or other shell-problematic characters
 [[nodiscard]] bool HasProblematicPathCharacters(std::string_view path);
