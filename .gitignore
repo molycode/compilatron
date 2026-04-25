@@ -54,3 +54,9 @@ backups/
 *.a
 *.so
 *.bak2
+
+# Claude Code
+CLAUDE.md
+CLAUDE.local.md
+.mcp.json
+.claude/
