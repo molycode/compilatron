@@ -128,7 +128,7 @@ find_package(Threads REQUIRED)
 message(STATUS "Building GUI version with ImGui interface")
 
 set(RESOURCES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
-set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui")
+set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/upstream")
 
 # Platform-specific resource files
 set(RESOURCE_FILES "")
@@ -148,7 +148,7 @@ install(TARGETS Compilatron
 
 # Fonts — namespaced under compilatron-data/ to avoid collisions in shared bin dirs
 install(FILES
-	"${CMAKE_SOURCE_DIR}/external/imgui/misc/fonts/Roboto-Medium.ttf"
+	"${CMAKE_SOURCE_DIR}/external/imgui/upstream/misc/fonts/Roboto-Medium.ttf"
 	"${CMAKE_SOURCE_DIR}/external/fonts/fa-solid-900.ttf"
 	DESTINATION "${CMAKE_INSTALL_BINDIR}/compilatron-data/fonts")
 

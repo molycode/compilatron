@@ -4,3 +4,9 @@
 [submodule "external/glfw"]
 	path = external/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "external/imgui/upstream"]
+	path = external/imgui/upstream
+	url = https://github.com/ocornut/imgui.git
+[submodule "external/nlohmann/upstream"]
+	path = external/nlohmann/upstream
+	url = https://github.com/nlohmann/json.git

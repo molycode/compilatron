@@ -16,7 +16,7 @@ target_include_directories(Compilatron SYSTEM PRIVATE
 	${IMGUI_DIR}
 	${IMGUI_DIR}/backends
 	${CMAKE_SOURCE_DIR}/external/fonts
-	${CMAKE_SOURCE_DIR}/external
+	${CMAKE_SOURCE_DIR}/external/nlohmann/upstream/single_include
 )
 
 # Copy font files alongside the executable
@@ -27,7 +27,7 @@ add_custom_command(TARGET Compilatron POST_BUILD
 		${CMAKE_SOURCE_DIR}/external/fonts/fa-solid-900.ttf
 		${FONTS_OUTPUT_DIR}/fa-solid-900.ttf
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		${CMAKE_SOURCE_DIR}/external/imgui/misc/fonts/Roboto-Medium.ttf
+		${CMAKE_SOURCE_DIR}/external/imgui/upstream/misc/fonts/Roboto-Medium.ttf
 		${FONTS_OUTPUT_DIR}/Roboto-Medium.ttf
 	COMMENT "Copying fonts to build output"
 )
