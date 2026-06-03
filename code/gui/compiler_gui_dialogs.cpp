@@ -1489,6 +1489,65 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					ImGui::SetTooltip("LLD: LLVM's fast, cross-platform linker (recommended)");
 				}
 
+				anyChanged |= ImGui::Checkbox(clang.projectLldb.uiName.data(), &clang.projectLldb.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("LLDB: LLVM debugger");
+				}
+
+				ImGui::SameLine();
+				anyChanged |= ImGui::Checkbox(clang.projectMlir.uiName.data(), &clang.projectMlir.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("MLIR: Multi-Level Intermediate Representation framework for compiler infrastructure");
+				}
+
+				ImGui::SameLine();
+				anyChanged |= ImGui::Checkbox(clang.projectFlang.uiName.data(), &clang.projectFlang.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("Flang: Fortran frontend for LLVM");
+				}
+
+				anyChanged |= ImGui::Checkbox(clang.projectPolly.uiName.data(), &clang.projectPolly.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("Polly: High-level loop and data-locality optimizer and optimization infrastructure");
+				}
+
+				ImGui::SameLine();
+				anyChanged |= ImGui::Checkbox(clang.projectBolt.uiName.data(), &clang.projectBolt.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("BOLT: Binary Optimization and Layout Tool");
+				}
+
+				ImGui::Text("%s:", clang.customProjects.uiName.data());
+				ImGui::SetNextItemWidth(400.0f);
+				char customProjectsBuffer[512];
+				size_t copyLen{ std::min(clang.customProjects.value.length(), sizeof(customProjectsBuffer) - 1) };
+				clang.customProjects.value.copy(customProjectsBuffer, copyLen);
+				customProjectsBuffer[copyLen] = '\0';
+
+				if (ImGui::InputText("##CustomProjects", customProjectsBuffer, sizeof(customProjectsBuffer)))
+				{
+					clang.customProjects = customProjectsBuffer;
+					anyChanged = true;
+				}
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("Additional LLVM_ENABLE_PROJECTS (semicolon-separated)\nExample: libclc;cross-project-tests");
+				}
+			}
+
+			if (ImGui::CollapsingHeader("LLVM Runtimes", ImGuiTreeNodeFlags_DefaultOpen))
+			{
 				anyChanged |= ImGui::Checkbox(clang.projectCompilerRt.uiName.data(), &clang.projectCompilerRt.value);
 
 				if (ImGui::IsItemHovered())
@@ -1520,14 +1579,6 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 				}
 
 				ImGui::SameLine();
-				anyChanged |= ImGui::Checkbox(clang.projectLldb.uiName.data(), &clang.projectLldb.value);
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::SetTooltip("LLDB: LLVM debugger");
-				}
-
-				ImGui::SameLine();
 				anyChanged |= ImGui::Checkbox(clang.projectOpenmp.uiName.data(), &clang.projectOpenmp.value);
 
 				if (ImGui::IsItemHovered())
@@ -1535,60 +1586,12 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					ImGui::SetTooltip("OpenMP: Parallel programming API and runtime");
 				}
 
-				anyChanged |= ImGui::Checkbox(clang.projectMlir.uiName.data(), &clang.projectMlir.value);
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::SetTooltip("MLIR: Multi-Level Intermediate Representation framework for compiler infrastructure");
-				}
-
 				ImGui::SameLine();
-				anyChanged |= ImGui::Checkbox(clang.projectFlang.uiName.data(), &clang.projectFlang.value);
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::SetTooltip("Flang: Fortran frontend for LLVM");
-				}
-
-				ImGui::SameLine();
-				anyChanged |= ImGui::Checkbox(clang.projectPolly.uiName.data(), &clang.projectPolly.value);
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::SetTooltip("Polly: High-level loop and data-locality optimizer and optimization infrastructure");
-				}
-
 				anyChanged |= ImGui::Checkbox(clang.projectPstl.uiName.data(), &clang.projectPstl.value);
 
 				if (ImGui::IsItemHovered())
 				{
 					ImGui::SetTooltip("PSTL: Parallel STL implementation");
-				}
-
-				ImGui::SameLine();
-				anyChanged |= ImGui::Checkbox(clang.projectBolt.uiName.data(), &clang.projectBolt.value);
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::SetTooltip("BOLT: Binary Optimization and Layout Tool");
-				}
-
-				ImGui::Text("%s:", clang.customProjects.uiName.data());
-				ImGui::SetNextItemWidth(400.0f);
-				char customProjectsBuffer[512];
-				size_t copyLen{ std::min(clang.customProjects.value.length(), sizeof(customProjectsBuffer) - 1) };
-				clang.customProjects.value.copy(customProjectsBuffer, copyLen);
-				customProjectsBuffer[copyLen] = '\0';
-
-				if (ImGui::InputText("##CustomProjects", customProjectsBuffer, sizeof(customProjectsBuffer)))
-				{
-					clang.customProjects = customProjectsBuffer;
-					anyChanged = true;
-				}
-
-				if (ImGui::IsItemHovered())
-				{
-					ImGui::SetTooltip("Additional LLVM_ENABLE_PROJECTS (semicolon-separated)\nExample: libclc;cross-project-tests");
 				}
 			}
 

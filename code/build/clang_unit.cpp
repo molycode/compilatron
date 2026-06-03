@@ -288,29 +288,14 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 			projects.push_back("lld");
 		}
 
-		if (config.projectCompilerRt)
-		{
-			projects.push_back("compiler-rt");
-		}
-
 		if (config.projectLldb)
 		{
 			projects.push_back("lldb");
 		}
 
-		if (config.projectOpenmp)
-		{
-			projects.push_back("openmp");
-		}
-
 		if (config.projectPolly)
 		{
 			projects.push_back("polly");
-		}
-
-		if (config.projectPstl)
-		{
-			projects.push_back("pstl");
 		}
 
 		if (config.projectMlir)
@@ -342,6 +327,21 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 		if (config.projectLibunwind)
 		{
 			runtimes.push_back("libunwind");
+		}
+
+		if (config.projectCompilerRt)
+		{
+			runtimes.push_back("compiler-rt");
+		}
+
+		if (config.projectOpenmp)
+		{
+			runtimes.push_back("openmp");
+		}
+
+		if (config.projectPstl)
+		{
+			runtimes.push_back("pstl");
 		}
 
 		if (!config.customProjects.value.empty())
