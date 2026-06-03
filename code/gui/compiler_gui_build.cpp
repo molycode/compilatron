@@ -63,8 +63,8 @@ void CCompilerGUI::StartBuild()
 							if (success)
 							{
 								std::string const installPath{ GetResolvedInstallPath() + "/" + folderName + "/bin" };
-								gLog.Info(Tge::Logging::ETarget::Console, "Compiler {} built successfully at: {}", name, installPath);
-								gLog.Info(Tge::Logging::ETarget::Console, "Use 'Find Compilers' in the dependency manager to register it.");
+								gLog.Info(Tge::Logging::ETarget::Listeners, "Compiler {} built successfully at: {}", name, installPath);
+								gLog.Info(Tge::Logging::ETarget::Listeners, "Use 'Find Compilers' in the dependency manager to register it.");
 							}
 						});
 
@@ -77,7 +77,7 @@ void CCompilerGUI::StartBuild()
 				}
 				else
 				{
-					gLog.Warning(Tge::Logging::ETarget::Console, "Skipping '{}' — lld selected but ld.lld not found", tab.name);
+					gLog.Warning(Tge::Logging::ETarget::Listeners, "Skipping '{}' — lld selected but ld.lld not found", tab.name);
 				}
 			}
 		}
@@ -117,19 +117,19 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 			std::string actualCompiler{ GetActualCompilerForTab(tab) };
 			std::string errorMsg{ GetValidationErrorMessage(validationResult, actualCompiler,
 			                        GetResolvedInstallPath() + "/" + tab.folderName) };
-			gLog.Error(Tge::Logging::ETarget::Console, "CompilerGUI: Build blocked for '{}': {}", tab.name, errorMsg);
+			gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': {}", tab.name, errorMsg);
 		}
 		else if (WouldInstallToSystemDirectory(tab))
 		{
 			std::string folderName{ tab.folderName.empty() ? GetFolderNameFromCompilerName(tab.name) : tab.folderName };
 			std::string plannedPath{ GetResolvedInstallPath() + "/" + folderName };
-			gLog.Error(Tge::Logging::ETarget::Console, "CompilerGUI: Build blocked for '{}': would install to system directory '{}'", tab.name, plannedPath);
+			gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': would install to system directory '{}'", tab.name, plannedPath);
 		}
 		else
 		{
 			if (!IsLldAvailableForTab(tab))
 			{
-				gLog.Error(Tge::Logging::ETarget::Console, "CompilerGUI: Build blocked for '{}': lld selected but ld.lld not found", tab.name);
+				gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': lld selected but ld.lld not found", tab.name);
 			}
 			else
 			{
@@ -183,15 +183,15 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 
 							if (isAlreadyRegistered)
 							{
-								gLog.Info(Tge::Logging::ETarget::Console, "Compiler {} built successfully. Rescanning its install directory since it's registered with this app.", name);
+								gLog.Info(Tge::Logging::ETarget::Listeners, "Compiler {} built successfully. Rescanning its install directory since it's registered with this app.", name);
 								g_compilerRegistry.ScanDirectory(installPath);
 								g_dependencyManager.ScanAllDependencies();
-								gLog.Info(Tge::Logging::ETarget::Console, "Registered compiler directory rescanned. Updated compiler version is now available.");
+								gLog.Info(Tge::Logging::ETarget::Listeners, "Registered compiler directory rescanned. Updated compiler version is now available.");
 							}
 							else
 							{
-								gLog.Info(Tge::Logging::ETarget::Console, "Compiler {} built successfully at: {}", name, installPath);
-								gLog.Info(Tge::Logging::ETarget::Console, "Directory not registered with app - use 'Find Compilers' to add it if desired.");
+								gLog.Info(Tge::Logging::ETarget::Listeners, "Compiler {} built successfully at: {}", name, installPath);
+								gLog.Info(Tge::Logging::ETarget::Listeners, "Directory not registered with app - use 'Find Compilers' to add it if desired.");
 							}
 						}
 					}
@@ -282,18 +282,18 @@ void CCompilerGUI::DeleteCompilerSources(SCompilerTab const& tab)
 
 		if (!ec)
 		{
-			gLog.Info(Tge::Logging::ETarget::Console, "Deleted sources for {} ({})", tab.name, tab.folderName);
+			gLog.Info(Tge::Logging::ETarget::Listeners, "Deleted sources for {} ({})", tab.name, tab.folderName);
 			gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Deleted sources: {}", sourcesPath);
 		}
 		else
 		{
-			gLog.Warning(Tge::Logging::ETarget::Console, "Failed to delete sources for {}: {}", tab.name, ec.message());
+			gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to delete sources for {}: {}", tab.name, ec.message());
 			gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Source deletion error: {}", ec.message());
 		}
 	}
 	else
 	{
-		gLog.Info(Tge::Logging::ETarget::Console, "No sources directory found for {}", tab.name);
+		gLog.Info(Tge::Logging::ETarget::Listeners, "No sources directory found for {}", tab.name);
 	}
 }
 
@@ -311,18 +311,18 @@ void CCompilerGUI::DeleteCompilerBuild(SCompilerTab const& tab)
 
 		if (!ec)
 		{
-			gLog.Info(Tge::Logging::ETarget::Console, "Deleted build artifacts for {} ({})", tab.name, tab.folderName);
+			gLog.Info(Tge::Logging::ETarget::Listeners, "Deleted build artifacts for {} ({})", tab.name, tab.folderName);
 			gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Deleted build: {}", buildPath);
 		}
 		else
 		{
-			gLog.Warning(Tge::Logging::ETarget::Console, "Failed to delete build artifacts for {}: {}", tab.name, ec.message());
+			gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to delete build artifacts for {}: {}", tab.name, ec.message());
 			gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Build deletion error: {}", ec.message());
 		}
 	}
 	else
 	{
-		gLog.Info(Tge::Logging::ETarget::Console, "No build directory found for {}", tab.name);
+		gLog.Info(Tge::Logging::ETarget::Listeners, "No build directory found for {}", tab.name);
 	}
 }
 

@@ -171,7 +171,7 @@ void CCompilerGUI::RenderPresetControls()
 		{
 			if (m_presetManager.DeletePreset(m_currentPresetName))
 			{
-				gLog.Info(Tge::Logging::ETarget::Console, "Preset deleted: {}", m_currentPresetName);
+				gLog.Info(Tge::Logging::ETarget::Listeners, "Preset deleted: {}", m_currentPresetName);
 				m_currentPresetName.clear();
 				RefreshPresetNames();
 
@@ -191,7 +191,7 @@ void CCompilerGUI::RenderPresetControls()
 			}
 			else
 			{
-				gLog.Warning(Tge::Logging::ETarget::Console, "Failed to delete preset: {}", m_currentPresetName);
+				gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to delete preset: {}", m_currentPresetName);
 			}
 
 			ImGui::CloseCurrentPopup();
@@ -521,7 +521,7 @@ void CCompilerGUI::SelectPreset(std::string_view name)
 	}
 	else
 	{
-		gLog.Warning(Tge::Logging::ETarget::Console, "Preset '{}' could not be loaded — selecting Default", name);
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Preset '{}' could not be loaded — selecting Default", name);
 		SelectPreset("Default");
 	}
 }
@@ -636,11 +636,11 @@ void CCompilerGUI::RenderPresetSaveDialog()
 					m_currentPresetName = newName;
 					g_stateManager.SetActivePreset(newName);
 					RefreshPresetNames();
-					gLog.Info(Tge::Logging::ETarget::Console, "Preset renamed to: {}", newName);
+					gLog.Info(Tge::Logging::ETarget::Listeners, "Preset renamed to: {}", newName);
 				}
 				else
 				{
-					gLog.Warning(Tge::Logging::ETarget::Console, "Failed to rename preset to: {}", newName);
+					gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to rename preset to: {}", newName);
 				}
 			}
 			else
@@ -676,7 +676,7 @@ void CCompilerGUI::SaveToPreset(std::string_view presetName, std::string_view de
 	{
 		if (tab.isOpen && (tab.name.empty() || tab.folderName.empty()))
 		{
-			gLog.Warning(Tge::Logging::ETarget::Console,
+			gLog.Warning(Tge::Logging::ETarget::Listeners,
 				"Preset '{}': excluded {} tab '{}' — {} not set",
 				presetName,
 				tab.kind == ECompilerKind::Gcc ? "gcc" : "clang",
@@ -694,11 +694,11 @@ void CCompilerGUI::SaveToPreset(std::string_view presetName, std::string_view de
 		m_currentPresetName = presetName;
 		g_stateManager.SetActivePreset(presetName);
 		RefreshPresetNames();
-		gLog.Info(Tge::Logging::ETarget::Console, "Preset saved: {}", presetName);
+		gLog.Info(Tge::Logging::ETarget::Listeners, "Preset saved: {}", presetName);
 	}
 	else
 	{
-		gLog.Warning(Tge::Logging::ETarget::Console, "Failed to save preset: {}", presetName);
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to save preset: {}", presetName);
 	}
 }
 

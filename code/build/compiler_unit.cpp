@@ -112,7 +112,7 @@ void CCompilerUnit::ShowNotification(std::string_view message)
 	m_notificationTimer = 5.0f;
 	m_showNotification = true;
 
-	m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Notification: {}", message));
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Notification: {}", message));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -153,11 +153,11 @@ void CCompilerUnit::SetStatus(ECompilerStatus status, std::string_view task)
 
 	if (task.empty())
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Status: " + statusName);
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Status: " + statusName);
 	}
 	else
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Status: {} - {}", statusName, task));
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Status: {} - {}", statusName, task));
 	}
 
 	gLog.Info(Tge::Logging::ETarget::File, "{}: Status change: {}{}", m_name, statusName, task.empty() ? "" : std::format(" ({})", task));
@@ -172,7 +172,7 @@ void CCompilerUnit::SetProgress(float progress)
 
 	if (progress - lastLoggedProgress >= 0.1f || progress >= 1.0f)
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Progress: " + std::to_string(static_cast<int>(progress * 100)) + "%");
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Progress: " + std::to_string(static_cast<int>(progress * 100)) + "%");
 		lastLoggedProgress = progress;
 	}
 }
@@ -188,7 +188,7 @@ void CCompilerUnit::SetFailureReason(std::string const& reason)
 bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
                                    std::function<void(std::string_view)> lineObserver)
 {
-	m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Executing: {}", command));
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Executing: {}", command));
 	gLog.Info(Tge::Logging::ETarget::File, "{}: Command: {}", m_name, command);
 
 	CProcessExecutor::SProcessResult result;
@@ -224,7 +224,7 @@ bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
 					// \r lines are intermediate progress updates (e.g. git clone) — skip logging
 					if (chunk[found] == '\n')
 					{
-						m_unitLog.Info(Tge::Logging::ETarget::Console, partialLine);
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, partialLine);
 						RequestRedraw();
 					}
 				}
@@ -245,7 +245,7 @@ bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
 				lineObserver(partialLine);
 			}
 
-			m_unitLog.Info(Tge::Logging::ETarget::Console, partialLine);
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, partialLine);
 		}
 	}
 	else
@@ -257,7 +257,7 @@ bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
 
 	if (result.errorMessage == "Process cancelled")
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Command execution stopped");
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Command execution stopped");
 	}
 	else
 	{
@@ -265,11 +265,11 @@ bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
 
 		if (success && captureOutput)
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Command completed successfully");
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Command completed successfully");
 		}
 		else if (!success)
 		{
-			m_unitLog.Error(Tge::Logging::ETarget::Console, captureOutput
+			m_unitLog.Error(Tge::Logging::ETarget::Listeners, captureOutput
 				? "Command failed with exit code: " + std::to_string(result.exitCode)
 				: std::format("Command failed (exit {}): {}", result.exitCode, result.output));
 		}
@@ -285,7 +285,7 @@ bool CCompilerUnit::ExecuteGitFetchWithRetry(std::string_view sourcesDir, std::s
 {
 	if (GetBuildConfig().updateSources)
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Found existing source directory, updating to latest version...");
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Found existing source directory, updating to latest version...");
 
 		// Retry git fetch with exponential backoff for network resilience
 		bool fetchSucceeded{ false };
@@ -304,7 +304,7 @@ bool CCompilerUnit::ExecuteGitFetchWithRetry(std::string_view sourcesDir, std::s
 
 			if (attempt < maxRetries && !m_shouldStop)
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Console, "Network error on attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetries) +
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Network error on attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetries) +
 				    " - retrying in " + std::to_string(delaySeconds) + " seconds...");
 
 				// Interruptible sleep: wake every 100ms to check for stop signal
@@ -323,7 +323,7 @@ bool CCompilerUnit::ExecuteGitFetchWithRetry(std::string_view sourcesDir, std::s
 
 		if (!fetchSucceeded && !m_shouldStop)
 		{
-			m_unitLog.Error(Tge::Logging::ETarget::Console, "Failed to fetch latest changes after " + std::to_string(maxRetries) + " attempts");
+			m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to fetch latest changes after " + std::to_string(maxRetries) + " attempts");
 			ReportProgress(ECompilerStatus::Failed, 0.2f, "Source fetch failed");
 			return false;
 		}
@@ -331,7 +331,7 @@ bool CCompilerUnit::ExecuteGitFetchWithRetry(std::string_view sourcesDir, std::s
 		return true;
 	}
 
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Skipping source update (update disabled) - using existing sources...");
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Skipping source update (update disabled) - using existing sources...");
 	return true;
 }
 
@@ -402,11 +402,11 @@ void CCompilerUnit::CheckAndCleanCompilerCache(std::string_view buildPath)
 
 						if (cleanEc)
 						{
-							gLog.Warning(Tge::Logging::ETarget::Console, "Failed to clean build directory: {}", cleanEc.message());
+							gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to clean build directory: {}", cleanEc.message());
 						}
 						else
 						{
-							m_unitLog.Info(Tge::Logging::ETarget::Console, "Cleaned existing build directory (no compiler ID found)");
+							m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cleaned existing build directory (no compiler ID found)");
 						}
 					}
 				}
@@ -415,11 +415,11 @@ void CCompilerUnit::CheckAndCleanCompilerCache(std::string_view buildPath)
 				{
 					if (!storedCompiler.empty())
 					{
-						m_unitLog.Info(Tge::Logging::ETarget::Console, "Compiler change detected");
-						m_unitLog.Info(Tge::Logging::ETarget::Console, "Previous compiler fingerprint: " + storedCompiler);
-						m_unitLog.Info(Tge::Logging::ETarget::Console, "Current compiler fingerprint: " + currentCompiler);
-						m_unitLog.Info(Tge::Logging::ETarget::Console, "Current compiler path: " + currentCompilerPath);
-						m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Removing entire build directory for clean rebuild: {}", buildPath));
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Compiler change detected");
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Previous compiler fingerprint: " + storedCompiler);
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Current compiler fingerprint: " + currentCompiler);
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Current compiler path: " + currentCompilerPath);
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Removing entire build directory for clean rebuild: {}", buildPath));
 
 						std::error_code changeEc;
 						std::filesystem::remove_all(buildPath, changeEc);
@@ -431,11 +431,11 @@ void CCompilerUnit::CheckAndCleanCompilerCache(std::string_view buildPath)
 
 						if (changeEc)
 						{
-							gLog.Warning(Tge::Logging::ETarget::Console, "Failed to clean build directory: {}", changeEc.message());
+							gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to clean build directory: {}", changeEc.message());
 						}
 						else
 						{
-							m_unitLog.Info(Tge::Logging::ETarget::Console, "Build directory cleaned successfully");
+							m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Build directory cleaned successfully");
 						}
 					}
 				}
@@ -485,7 +485,7 @@ bool CCompilerUnit::PreConfigureHook()
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerUnit::ValidateSources()
 {
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Validating sources...");
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Validating sources...");
 
 	namespace fs = std::filesystem;
 	std::string const sourcePath{ GetSourcePath() };
@@ -497,19 +497,19 @@ bool CCompilerUnit::ValidateSources()
 		{
 			if (!fs::exists(fs::path(sourcePath) / path))
 			{
-				m_unitLog.Error(Tge::Logging::ETarget::Console, "Missing required component: " + path);
+				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Missing required component: " + path);
 				valid = false;
 			}
 		}
 
 		if (valid)
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Sources validated successfully");
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Sources validated successfully");
 		}
 	}
 	else
 	{
-		m_unitLog.Error(Tge::Logging::ETarget::Console, "Source directory does not exist: " + sourcePath);
+		m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Source directory does not exist: " + sourcePath);
 	}
 
 	return valid;
@@ -519,7 +519,7 @@ bool CCompilerUnit::ValidateSources()
 bool CCompilerUnit::DownloadSources()
 {
 	SetStatus(ECompilerStatus::Cloning, "Updating sources");
-	m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Updating sources for {}", GetName()));
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Updating sources for {}", GetName()));
 
 	namespace fs = std::filesystem;
 	std::string const sourcesDir{ GetSourcePath() };
@@ -536,71 +536,71 @@ bool CCompilerUnit::DownloadSources()
 
 			if (isTag)
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Console, "Target '" + targetBranch + "' is a tag, checking out tag...");
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetBranch + "' is a tag, checking out tag...");
 				checkoutCmd = "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout \"tags/" + targetBranch + "\"";
 			}
 			else
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Console, "Target '" + targetBranch + "' is a branch, updating branch...");
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetBranch + "' is a branch, updating branch...");
 				checkoutCmd = "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout -B " + targetBranch + " FETCH_HEAD";
 			}
 
 			if (ExecuteCommand(checkoutCmd))
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Console, isTag ? "Checked out tag: " + targetBranch : "Updated to latest: " + targetBranch);
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, isTag ? "Checked out tag: " + targetBranch : "Updated to latest: " + targetBranch);
 				SetStatus(ECompilerStatus::Cloning, "Sources updated");
 				success = true;
 			}
 			else
 			{
-				m_unitLog.Error(Tge::Logging::ETarget::Console, "Failed to update existing repository");
+				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to update existing repository");
 				ReportProgress(ECompilerStatus::Failed, 0.2f, "Source update failed");
 			}
 		}
 	}
 	else
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Cloning fresh repository for target: " + targetBranch);
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cloning fresh repository for target: " + targetBranch);
 		fs::create_directories(fs::path(sourcesDir).parent_path());
 
 		std::string const shallowBranchCloneCmd{ ResolveGit() + " clone --branch \"" + targetBranch + "\" --depth 1 --progress \"" + sourceUrl + "\" \"" + sourcesDir + "\" 2>&1" };
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Attempting shallow clone for tag/recent branch: " + shallowBranchCloneCmd);
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Attempting shallow clone for tag/recent branch: " + shallowBranchCloneCmd);
 
 		bool cloned{ ExecuteCommand(shallowBranchCloneCmd) };
 
 		if (!cloned)
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Shallow clone with branch failed, trying shallow clone + fetch + checkout...");
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Shallow clone with branch failed, trying shallow clone + fetch + checkout...");
 			std::string const defaultCloneCmd{ ResolveGit() + " clone --depth 1 --progress \"" + sourceUrl + "\" \"" + sourcesDir + "\" 2>&1" };
 
 			if (ExecuteCommand(defaultCloneCmd))
 			{
 				cloned = true;
 				std::string const fetchCmd{ "cd \"" + sourcesDir + "\" && " + ResolveGit() + " fetch --depth 1 origin \"" + targetBranch + "\":\"" + targetBranch + "\" 2>&1" };
-				m_unitLog.Info(Tge::Logging::ETarget::Console, "Fetching target branch: " + fetchCmd);
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Fetching target branch: " + fetchCmd);
 
 				if (ExecuteCommand(fetchCmd))
 				{
 					std::string const checkoutCmd{ "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout \"" + targetBranch + "\" 2>&1" };
-					m_unitLog.Info(Tge::Logging::ETarget::Console, "Checking out target branch: " + checkoutCmd);
+					m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Checking out target branch: " + checkoutCmd);
 
 					if (ExecuteCommand(checkoutCmd))
 					{
-						m_unitLog.Info(Tge::Logging::ETarget::Console, "Successfully fetched and checked out: " + targetBranch);
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Successfully fetched and checked out: " + targetBranch);
 					}
 					else
 					{
-						m_unitLog.Info(Tge::Logging::ETarget::Console, "Could not checkout specific branch, using default branch from shallow clone");
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Could not checkout specific branch, using default branch from shallow clone");
 					}
 				}
 				else
 				{
-					m_unitLog.Info(Tge::Logging::ETarget::Console, "Could not fetch specific branch, using default branch from shallow clone");
+					m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Could not fetch specific branch, using default branch from shallow clone");
 				}
 			}
 			else
 			{
-				m_unitLog.Error(Tge::Logging::ETarget::Console, "Failed to clone sources");
+				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to clone sources");
 				ReportProgress(ECompilerStatus::Failed, 0.2f, "Source download failed");
 			}
 		}
@@ -609,7 +609,7 @@ bool CCompilerUnit::DownloadSources()
 		{
 			if (PostDownloadHook(sourcesDir))
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Console, "Sources downloaded successfully");
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Sources downloaded successfully");
 				SetStatus(ECompilerStatus::Cloning, "Sources downloaded");
 				SetProgress(0.2f);
 				success = true;
@@ -653,7 +653,7 @@ bool CCompilerUnit::Configure()
 	if (PreConfigureHook())
 	{
 		SetStatus(ECompilerStatus::Building, "Configuring");
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Configuring build...");
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Configuring build...");
 
 		namespace fs = std::filesystem;
 		fs::create_directories(GetBuildPath());
@@ -671,27 +671,27 @@ bool CCompilerUnit::Configure()
 
 			if (ec)
 			{
-				gLog.Warning(Tge::Logging::ETarget::Console, "Failed to remove CMakeCache.txt: {}", ec.message());
+				gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to remove CMakeCache.txt: {}", ec.message());
 			}
 			else
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Console, "Cleared cmake cache");
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cleared cmake cache");
 			}
 		}
 
 		if (!m_configureCommand.empty())
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Configure command: " + m_configureCommand);
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Configure command: " + m_configureCommand);
 			success = ExecuteCommand(m_configureCommand);
 
 			if (success)
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Console, "Configuration completed successfully");
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Configuration completed successfully");
 				SetProgress(0.4f);
 			}
 			else if (!m_shouldStop)
 			{
-				m_unitLog.Error(Tge::Logging::ETarget::Console, "Configuration failed");
+				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Configuration failed");
 				SetFailureReason("Configure command failed");
 				ReportProgress(ECompilerStatus::Failed, 0.4f, "Configuration failed");
 			}
@@ -762,15 +762,15 @@ std::function<void(std::string_view)> CCompilerUnit::CreateBuildObserver()
 bool CCompilerUnit::Build()
 {
 	SetStatus(ECompilerStatus::Building, "Compiling");
-	m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Building {}...", GetName()));
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Building {}...", GetName()));
 
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Build command: " + m_buildCommand);
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Build command: " + m_buildCommand);
 
 	bool const success{ ExecuteCommand(m_buildCommand, true, CreateBuildObserver()) };
 
 	if (success)
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Build completed successfully");
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Build completed successfully");
 	}
 	else if (!m_shouldStop)
 	{
@@ -787,7 +787,7 @@ bool CCompilerUnit::Install()
 	namespace fs = std::filesystem;
 
 	SetStatus(ECompilerStatus::Building, "Installing");
-	m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Installing {}...", GetName()));
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Installing {}...", GetName()));
 
 	// Remove previous installation immediately before installing — not at build start —
 	// so an aborted or failed build leaves the existing compiler intact.
@@ -812,37 +812,37 @@ bool CCompilerUnit::Install()
 
 		if (hostIsHere)
 		{
-			m_unitLog.Warning(Tge::Logging::ETarget::Console,
+			m_unitLog.Warning(Tge::Logging::ETarget::Listeners,
 				std::format("Skipping removal of {} — host compiler is located there; installing over existing files", installPath.string()));
 		}
 		else
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console,
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners,
 				std::format("Removing previous installation: {}", installPath.string()));
 			std::error_code ec;
 			fs::remove_all(installPath, ec);
 
 			if (ec)
 			{
-				m_unitLog.Warning(Tge::Logging::ETarget::Console,
+				m_unitLog.Warning(Tge::Logging::ETarget::Listeners,
 					std::format("Failed to remove previous installation: {}", ec.message()));
 			}
 		}
 	}
 
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Install command: " + m_installCommand);
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Install command: " + m_installCommand);
 
 	bool const success{ ExecuteCommand(m_installCommand) };
 
 	if (success)
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Installation completed successfully");
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Installation completed successfully");
 		SetStatus(ECompilerStatus::Success, "Ready");
 		SetProgress(1.0f);
 	}
 	else if (!m_shouldStop)
 	{
-		m_unitLog.Error(Tge::Logging::ETarget::Console, "Installation failed");
+		m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Installation failed");
 		SetFailureReason("Install command failed");
 		ReportProgress(ECompilerStatus::Failed, 0.9f, "Install failed");
 	}
@@ -853,7 +853,7 @@ bool CCompilerUnit::Install()
 //////////////////////////////////////////////////////////////////////////
 void CCompilerUnit::Cleanup()
 {
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Cleaning up build artifacts...");
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cleaning up build artifacts...");
 
 	namespace fs = std::filesystem;
 	SCompilerBuildConfig const& config = GetBuildConfig();
@@ -862,7 +862,7 @@ void CCompilerUnit::Cleanup()
 	{
 		if (fs::exists(config.buildDir))
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Removing build directory: " + config.buildDir);
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Removing build directory: " + config.buildDir);
 			fs::remove_all(config.buildDir);
 		}
 	}
@@ -871,18 +871,18 @@ void CCompilerUnit::Cleanup()
 	{
 		if (fs::exists(config.sourcesDir))
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Console, "Removing sources directory: " + config.sourcesDir);
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Removing sources directory: " + config.sourcesDir);
 			fs::remove_all(config.sourcesDir);
 		}
 	}
 
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Cleanup completed");
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cleanup completed");
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CCompilerUnit::Stop()
 {
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Stopping build...");
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Stopping build...");
 	m_shouldStop = true;
 
 	if (m_buildThread.joinable())
@@ -917,11 +917,11 @@ void CCompilerUnit::StartBuildAsync()
 			ExecuteBuildLifecycle();
 		});
 
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "Started asynchronous build for " + m_name);
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Started asynchronous build for " + m_name);
 	}
 	else
 	{
-		m_unitLog.Error(Tge::Logging::ETarget::Console, "Build already running for " + m_name);
+		m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Build already running for " + m_name);
 	}
 }
 
@@ -936,7 +936,7 @@ bool CCompilerUnit::IsCompleted() const
 //////////////////////////////////////////////////////////////////////////
 void CCompilerUnit::ExecuteBuildLifecycle()
 {
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Starting build lifecycle for " + m_name);
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Starting build lifecycle for " + m_name);
 
 	bool success{ false };
 
@@ -972,7 +972,7 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 										{
 											success = true;
 											ReportProgress(ECompilerStatus::Success, 1.0f, "Ready");
-											m_unitLog.Info(Tge::Logging::ETarget::Console, "Build completed successfully for " + m_name);
+											m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Build completed successfully for " + m_name);
 										}
 										else
 										{
@@ -981,7 +981,7 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 												SetStatus(ECompilerStatus::Aborted, "Stopped by user");
 											}
 
-											gLog.Warning(Tge::Logging::ETarget::Console, "Install step failed for {}", m_name);
+											gLog.Warning(Tge::Logging::ETarget::Listeners, "Install step failed for {}", m_name);
 										}
 									}
 									else
@@ -996,7 +996,7 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 										SetStatus(ECompilerStatus::Aborted, "Stopped by user");
 									}
 
-									gLog.Warning(Tge::Logging::ETarget::Console, "Build step failed for {}", m_name);
+									gLog.Warning(Tge::Logging::ETarget::Listeners, "Build step failed for {}", m_name);
 								}
 							}
 							else
@@ -1011,7 +1011,7 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 								SetStatus(ECompilerStatus::Aborted, "Stopped by user");
 							}
 
-							gLog.Warning(Tge::Logging::ETarget::Console, "Configure step failed for {}", m_name);
+							gLog.Warning(Tge::Logging::ETarget::Listeners, "Configure step failed for {}", m_name);
 						}
 					}
 					else
@@ -1021,7 +1021,7 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 				}
 				else
 				{
-					gLog.Warning(Tge::Logging::ETarget::Console, "Source validation failed for {}", m_name);
+					gLog.Warning(Tge::Logging::ETarget::Listeners, "Source validation failed for {}", m_name);
 					SetStatus(ECompilerStatus::Failed, "Source validation failed");
 					SetFailureReason("Source validation failed after download");
 				}
@@ -1033,7 +1033,7 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 		}
 		else
 		{
-			gLog.Warning(Tge::Logging::ETarget::Console, "Source download failed for {}", m_name);
+			gLog.Warning(Tge::Logging::ETarget::Listeners, "Source download failed for {}", m_name);
 			SetFailureReason("Failed to download/update sources");
 
 			if (!IsCompleted())
@@ -1075,15 +1075,15 @@ void CCompilerUnit::ReportCompletion(bool success, std::string_view errorMessage
 {
 	if (success)
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Build completed: {}", m_name));
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Build completed: {}", m_name));
 	}
 	else if (m_status == ECompilerStatus::Aborted)
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, std::format("Build aborted: {}", m_name));
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format("Build aborted: {}", m_name));
 	}
 	else
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, errorMessage.empty()
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, errorMessage.empty()
 			? std::format("Build failed: {}", m_name)
 			: std::format("Build failed: {} — {}", m_name, errorMessage));
 	}

@@ -720,11 +720,11 @@ void CDependencyWindow::RenderExecutableSelectionPopup(std::string_view identifi
 					if (success)
 					{
 						m_columnWidthsDirty = true;
-						gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", identStr, selectedExe.path, selectedExe.version);
+						gDepLog.Info(Tge::Logging::ETarget::Listeners, "Registered {} executable: {} (v{})", identStr, selectedExe.path, selectedExe.version);
 					}
 					else
 					{
-						gDepLog.Warning(Tge::Logging::ETarget::Console, "Failed to register {} executable: {} (v{})", identStr, selectedExe.path, selectedExe.version);
+						gDepLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to register {} executable: {} (v{})", identStr, selectedExe.path, selectedExe.version);
 					}
 
 					state.showSelectionPopup = false;

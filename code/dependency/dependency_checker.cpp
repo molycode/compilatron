@@ -84,14 +84,14 @@ bool CDependencyChecker::InstallDependencies()
 
 	if (!installCmd.empty())
 	{
-		gDepLog.Info(Tge::Logging::ETarget::Console, "Installing missing dependencies...");
+		gDepLog.Info(Tge::Logging::ETarget::Listeners, "Installing missing dependencies...");
 		gDepLog.Info(Tge::Logging::ETarget::File, "Command: {}", installCmd);
 
 		auto const installResult = CProcessExecutor::Execute(installCmd);
 
 		if (installResult.success)
 		{
-			gDepLog.Info(Tge::Logging::ETarget::Console, "Dependencies installed successfully!");
+			gDepLog.Info(Tge::Logging::ETarget::Listeners, "Dependencies installed successfully!");
 
 			for (auto& dep : m_dependencies)
 			{
@@ -103,7 +103,7 @@ bool CDependencyChecker::InstallDependencies()
 		}
 		else
 		{
-			gDepLog.Warning(Tge::Logging::ETarget::Console, "Failed to install dependencies.");
+			gDepLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to install dependencies.");
 			gDepLog.Warning(Tge::Logging::ETarget::File, "Dependency install command failed: {}", installCmd);
 		}
 	}

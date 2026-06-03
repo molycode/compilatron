@@ -175,7 +175,7 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 
 		if (!CleanupPreviousBuild(settings))
 		{
-			gLog.Warning(Tge::Logging::ETarget::Console, "Failed to clean some previous build artifacts, continuing...");
+			gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to clean some previous build artifacts, continuing...");
 		}
 	}
 
@@ -191,7 +191,7 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 
 			if (!BuildLocalDependencies())
 			{
-				gLog.Error(Tge::Logging::ETarget::Console, "Failed to build required dependencies");
+				gLog.Error(Tge::Logging::ETarget::Listeners, "Failed to build required dependencies");
 				UpdateProgress(EBuildPhase::Failed, 0.0f, "Build failed: Failed to build required dependencies");
 				success = false;
 			}
@@ -367,7 +367,7 @@ bool CCompilerBuilder::BuildLocalDependencies()
 			}
 			else if (dep.checkCommand == "python3")
 			{
-				gLog.Warning(Tge::Logging::ETarget::Console, "Python3 must be installed via the system package manager.");
+				gLog.Warning(Tge::Logging::ETarget::Listeners, "Python3 must be installed via the system package manager.");
 				success = false; // Python3 is complex to build, require system installation
 			}
 			else if (dep.checkCommand == "make")
@@ -377,12 +377,12 @@ bool CCompilerBuilder::BuildLocalDependencies()
 			}
 			else if (dep.checkCommand == "curl")
 			{
-				gLog.Warning(Tge::Logging::ETarget::Console, "curl not available — downloading cmake/ninja from source will fail.");
+				gLog.Warning(Tge::Logging::ETarget::Listeners, "curl not available — downloading cmake/ninja from source will fail.");
 				success = false;
 			}
 			else if (dep.checkCommand == "unzip")
 			{
-				gLog.Warning(Tge::Logging::ETarget::Console, "unzip not available — extracting zip archives will fail.");
+				gLog.Warning(Tge::Logging::ETarget::Listeners, "unzip not available — extracting zip archives will fail.");
 				success = false;
 			}
 			else if (dep.checkCommand == "bison")
@@ -497,7 +497,7 @@ bool CCompilerBuilder::BuildLocalDependencies()
 				}
 				else
 				{
-					gLog.Error(Tge::Logging::ETarget::Console, "No bootstrap compiler available. Need GCC, Clang, or built compiler for bootstrapping.");
+					gLog.Error(Tge::Logging::ETarget::Listeners, "No bootstrap compiler available. Need GCC, Clang, or built compiler for bootstrapping.");
 					success = false;
 				}
 			}
@@ -557,70 +557,70 @@ bool CCompilerBuilder::DownloadAndBuildNinja()
 bool CCompilerBuilder::DownloadAndBuildGit()
 {
 	// For Git, we typically rely on system installation due to complexity
-	gLog.Warning(Tge::Logging::ETarget::Console, "Git must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Git must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildBison()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Bison must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Bison must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildFlex()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Flex must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Flex must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildAutoconf()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Autoconf must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Autoconf must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildAutomake()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Automake must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Automake must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildLibtool()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Libtool must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Libtool must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildPkgConfig()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Pkg-config must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Pkg-config must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildPerl()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Perl must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Perl must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildGettext()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Gettext must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Gettext must be installed via the system package manager");
 	return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerBuilder::DownloadAndBuildTexinfo()
 {
-	gLog.Warning(Tge::Logging::ETarget::Console, "Texinfo must be installed via the system package manager");
+	gLog.Warning(Tge::Logging::ETarget::Listeners, "Texinfo must be installed via the system package manager");
 	return false;
 }
 
@@ -723,7 +723,7 @@ bool CCompilerBuilder::ExecuteCommand(std::string_view command, bool)
 
 	if (!result.success)
 	{
-		gLog.Warning(Tge::Logging::ETarget::Console, "Command failed (exit {}): {}", result.exitCode, result.output);
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Command failed (exit {}): {}", result.exitCode, result.output);
 	}
 
 	return result.success;
@@ -796,7 +796,7 @@ void CCompilerBuilder::BuildUsingCompilerUnits(std::vector<CCompilerUnit*> const
 	}
 	else
 	{
-		gLog.Warning(Tge::Logging::ETarget::Console, "CompilerBuilder: No compiler units to build");
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "CompilerBuilder: No compiler units to build");
 		UpdateProgress(EBuildPhase::Failed, 0.0f, "No compilers configured");
 	}
 }
@@ -841,7 +841,7 @@ void CCompilerBuilder::BuildCompilerUnitsSequentially(std::vector<CCompilerUnit*
 			gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Registered active build: {}", installPath);
 		}
 
-		gLog.Info(Tge::Logging::ETarget::Console, "CompilerBuilder: Starting build {}/{}: {}", i + 1, units.size(), unit->GetName());
+		gLog.Info(Tge::Logging::ETarget::Listeners, "CompilerBuilder: Starting build {}/{}: {}", i + 1, units.size(), unit->GetName());
 
 		unit->StartBuildAsync();
 

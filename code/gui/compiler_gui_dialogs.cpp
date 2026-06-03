@@ -239,7 +239,7 @@ void CCompilerGUI::RenderSettingsDialog()
 
 			if (!m_versionManager.SaveToCache())
 			{
-				gLog.Warning(Tge::Logging::ETarget::Console, "Failed to persist GitHub token to cache");
+				gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to persist GitHub token to cache");
 			}
 
 			ImGui::CloseCurrentPopup();
@@ -261,7 +261,7 @@ void CCompilerGUI::RenderSettingsDialog()
 
 			if (!m_versionManager.SaveToCache())
 			{
-				gLog.Warning(Tge::Logging::ETarget::Console, "Failed to save version cache after clearing GitHub token");
+				gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to save version cache after clearing GitHub token");
 			}
 
 			m_tokenTestResult.clear();
@@ -393,7 +393,7 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 
 				if (m_scannedCompilers.empty() && !std::string_view{ m_customDirectoryBuffer }.empty())
 				{
-					gLog.Warning(Tge::Logging::ETarget::Console,
+					gLog.Warning(Tge::Logging::ETarget::Listeners,
 						"CompilerGUI: No compilers found in {}", m_customDirectoryBuffer);
 				}
 			}
@@ -498,7 +498,7 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 						g_compilerRegistry.SaveConfig();
 					}
 
-					gLog.Info(Tge::Logging::ETarget::Console,
+					gLog.Info(Tge::Logging::ETarget::Listeners,
 						"CompilerGUI: Added {} compiler(s)", numAdded);
 
 					m_scannedCompilers.clear();
@@ -817,7 +817,7 @@ void CCompilerGUI::RenderRemoveCompilerDialog()
 				}
 			}
 
-			gLog.Info(Tge::Logging::ETarget::Console, "Removed compiler tab: {}", m_compilerToRemove);
+			gLog.Info(Tge::Logging::ETarget::Listeners, "Removed compiler tab: {}", m_compilerToRemove);
 			ImGui::CloseCurrentPopup();
 		}
 

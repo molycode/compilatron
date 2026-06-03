@@ -49,11 +49,11 @@ void CDependencyWindow::HandlePathProcessingResults()
 				{
 					m_columnWidthsDirty = true;
 					SaveActivePreset();
-					gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", result.identifier, result.finalPath, version);
+					gDepLog.Info(Tge::Logging::ETarget::Listeners, "Registered {} executable: {} (v{})", result.identifier, result.finalPath, version);
 				}
 				else
 				{
-					gDepLog.Warning(Tge::Logging::ETarget::Console, "Failed to register {} executable: {}", result.identifier, result.finalPath);
+					gDepLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to register {} executable: {}", result.identifier, result.finalPath);
 				}
 				break;
 			}
@@ -71,11 +71,11 @@ void CDependencyWindow::HandlePathProcessingResults()
 					{
 						m_columnWidthsDirty = true;
 						SaveActivePreset();
-						gDepLog.Info(Tge::Logging::ETarget::Console, "Registered {} executable: {} (v{})", result.identifier, exe.path, exe.version);
+						gDepLog.Info(Tge::Logging::ETarget::Listeners, "Registered {} executable: {} (v{})", result.identifier, exe.path, exe.version);
 					}
 					else
 					{
-						gDepLog.Warning(Tge::Logging::ETarget::Console, "Failed to register {} executable: {} (v{})", result.identifier, exe.path, exe.version);
+						gDepLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to register {} executable: {} (v{})", result.identifier, exe.path, exe.version);
 					}
 				}
 				else if (result.executables.size() > 1)
@@ -88,11 +88,11 @@ void CDependencyWindow::HandlePathProcessingResults()
 					selectionState.selectedIndex = 0;
 					selectionState.dependencyIdentifier = result.identifier;
 
-					gDepLog.Info(Tge::Logging::ETarget::Console, "Found {} {} executables - please select one", result.executables.size(), result.identifier);
+					gDepLog.Info(Tge::Logging::ETarget::Listeners, "Found {} {} executables - please select one", result.executables.size(), result.identifier);
 				}
 				else
 				{
-					gDepLog.Info(Tge::Logging::ETarget::Console, "No {} executables found in directory: {}", result.identifier, result.finalPath);
+					gDepLog.Info(Tge::Logging::ETarget::Listeners, "No {} executables found in directory: {}", result.identifier, result.finalPath);
 				}
 				break;
 			}
@@ -109,7 +109,7 @@ void CDependencyWindow::HandlePathProcessingResults()
 
 			case EPathType::Error:
 			{
-				gDepLog.Warning(Tge::Logging::ETarget::Console, "Error processing {} path: {}", result.identifier, result.errorMessage);
+				gDepLog.Warning(Tge::Logging::ETarget::Listeners, "Error processing {} path: {}", result.identifier, result.errorMessage);
 				break;
 			}
 		}

@@ -23,7 +23,7 @@ void CDependencyWindow::StartSingleInstallation(std::string_view identifier, std
 	m_installationStatus[identStr] = "Installing...";
 
 	std::string const sourceType = IsUrl(urlStr) ? "URL" : "local file";
-	gDepLog.Info(Tge::Logging::ETarget::Console, "Starting installation of {} from {}: {}", identStr, sourceType, urlStr);
+	gDepLog.Info(Tge::Logging::ETarget::Listeners, "Starting installation of {} from {}: {}", identStr, sourceType, urlStr);
 
 	SAdvancedDependencyInfo* depInfo = g_dependencyManager.GetDependency(identStr);
 
@@ -65,7 +65,7 @@ void CDependencyWindow::UpdateInstallationProgress()
 		if (result->success)
 		{
 			m_installationStatus[identifier] = "Installation completed successfully";
-			gDepLog.Info(Tge::Logging::ETarget::Console, "Successfully installed {} to ./dependencies/", result->unitName);
+			gDepLog.Info(Tge::Logging::ETarget::Listeners, "Successfully installed {} to ./dependencies/", result->unitName);
 			g_dependencyManager.ScanAllDependencies();
 			LoadLocationSelectionsFromPresets();
 			m_columnWidthsDirty = true;
@@ -73,7 +73,7 @@ void CDependencyWindow::UpdateInstallationProgress()
 		else
 		{
 			m_installationStatus[identifier] = "Installation failed";
-			gDepLog.Error(Tge::Logging::ETarget::Console, "Failed to install {}: {}", result->unitName, result->message);
+			gDepLog.Error(Tge::Logging::ETarget::Listeners, "Failed to install {}: {}", result->unitName, result->message);
 		}
 	}
 }
@@ -85,7 +85,7 @@ void CDependencyWindow::CancelInstallation(std::string_view identifier)
 	m_activeInstallations[identStr] = false;
 	m_installationStatus[identStr] = "Installation cancelled";
 	m_installationQueue.Cancel(identStr);
-	gDepLog.Info(Tge::Logging::ETarget::Console, "Installation cancelled for {}", identStr);
+	gDepLog.Info(Tge::Logging::ETarget::Listeners, "Installation cancelled for {}", identStr);
 }
 
 } // namespace Ctrn

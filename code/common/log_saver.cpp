@@ -83,7 +83,7 @@ void CLogSaver::Save(std::string_view header, std::string_view defaultFilename, 
 					}
 				}
 
-				gLog.Info(Tge::Logging::ETarget::Console, "Log saved to: {}", chosenPath);
+				gLog.Info(Tge::Logging::ETarget::Listeners, "Log saved to: {}", chosenPath);
 			}
 			else
 			{

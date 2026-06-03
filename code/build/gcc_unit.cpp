@@ -100,18 +100,18 @@ std::string CGccUnit::GenerateInstallCommand() const
 bool CGccUnit::PostDownloadHook(std::string_view sourcesDir)
 {
 	std::string const prereqCmd{ "cd \"" + std::string{sourcesDir} + "\" && contrib/download_prerequisites" };
-	m_unitLog.Info(Tge::Logging::ETarget::Console, "Downloading GCC prerequisites: " + prereqCmd);
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Downloading GCC prerequisites: " + prereqCmd);
 
 	bool const success{ ExecuteCommand(prereqCmd) };
 
 	if (!success)
 	{
-		m_unitLog.Error(Tge::Logging::ETarget::Console, "Failed to download GCC prerequisites");
+		m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to download GCC prerequisites");
 		ReportProgress(ECompilerStatus::Failed, 0.2f, "Prerequisites download failed");
 	}
 	else
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Console, "GCC prerequisites downloaded successfully");
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "GCC prerequisites downloaded successfully");
 	}
 
 	return success;
