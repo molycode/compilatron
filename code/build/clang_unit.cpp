@@ -211,22 +211,22 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 
 		if (config.targetX86)
 		{
-			targets.push_back("X86");
+			targets.emplace_back("X86");
 		}
 
 		if (config.targetAArch64)
 		{
-			targets.push_back("AArch64");
+			targets.emplace_back("AArch64");
 		}
 
 		if (config.targetARM)
 		{
-			targets.push_back("ARM");
+			targets.emplace_back("ARM");
 		}
 
 		if (config.targetRISCV)
 		{
-			targets.push_back("RISCV");
+			targets.emplace_back("RISCV");
 		}
 
 		if (!config.customTargets.value.empty())
@@ -275,73 +275,73 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 		// Projects (go into LLVM_ENABLE_PROJECTS)
 		if (config.projectClang)
 		{
-			projects.push_back("clang");
+			projects.emplace_back("clang");
 		}
 
 		if (config.projectClangToolsExtra)
 		{
-			projects.push_back("clang-tools-extra");
+			projects.emplace_back("clang-tools-extra");
 		}
 
 		if (config.projectLld)
 		{
-			projects.push_back("lld");
+			projects.emplace_back("lld");
 		}
 
 		if (config.projectLldb)
 		{
-			projects.push_back("lldb");
+			projects.emplace_back("lldb");
 		}
 
 		if (config.projectPolly)
 		{
-			projects.push_back("polly");
+			projects.emplace_back("polly");
 		}
 
 		if (config.projectMlir)
 		{
-			projects.push_back("mlir");
+			projects.emplace_back("mlir");
 		}
 
 		if (config.projectFlang)
 		{
-			projects.push_back("flang");
+			projects.emplace_back("flang");
 		}
 
 		if (config.projectBolt)
 		{
-			projects.push_back("bolt");
+			projects.emplace_back("bolt");
 		}
 
 		// Runtimes (go into LLVM_ENABLE_RUNTIMES)
 		if (config.projectLibcxx)
 		{
-			runtimes.push_back("libcxx");
+			runtimes.emplace_back("libcxx");
 		}
 
 		if (config.projectLibcxxabi)
 		{
-			runtimes.push_back("libcxxabi");
+			runtimes.emplace_back("libcxxabi");
 		}
 
 		if (config.projectLibunwind)
 		{
-			runtimes.push_back("libunwind");
+			runtimes.emplace_back("libunwind");
 		}
 
 		if (config.projectCompilerRt)
 		{
-			runtimes.push_back("compiler-rt");
+			runtimes.emplace_back("compiler-rt");
 		}
 
 		if (config.projectOpenmp)
 		{
-			runtimes.push_back("openmp");
+			runtimes.emplace_back("openmp");
 		}
 
 		if (config.projectPstl)
 		{
-			runtimes.push_back("pstl");
+			runtimes.emplace_back("pstl");
 		}
 
 		if (!config.customProjects.value.empty())
