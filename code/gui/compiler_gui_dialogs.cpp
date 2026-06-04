@@ -1879,6 +1879,19 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					ImGui::EndTooltip();
 				}
 
+				ImGui::SameLine();
+				anyChanged |= ImGui::Checkbox(clang.writeRpathConfig.uiName.data(), &clang.writeRpathConfig.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::BeginTooltip();
+					ImGui::Text("After install, write clang.cfg/clang++.cfg next to the binaries adding the bundled");
+					ImGui::Text("runtime dir (libomp/libc++/libunwind) to the rpath of programs you build, so they run");
+					ImGui::Text("without LD_LIBRARY_PATH. <CFGDIR>-relative, so it survives the toolchain being moved.");
+					ImGui::Text("Local convenience - leave OFF for depot/farm toolchains whose artifacts ship elsewhere.");
+					ImGui::EndTooltip();
+				}
+
 				ImGui::Text("%s:", clang.customCFlags.uiName.data());
 				ImGui::SetNextItemWidth(400.0f);
 				char customCFlagsBuffer[512];
