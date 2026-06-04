@@ -166,6 +166,20 @@ SAdvancedDependencyInfo* CDependencyManager::GetDependencyByName(std::string_vie
 //////////////////////////////////////////////////////////////////////////
 void CDependencyManager::ScanDependency(SAdvancedDependencyInfo& dep)
 {
+	// Preserve hand-added paths and the current choice before the rescan: FindAllLocations only
+	// probes standard bin dirs, so without this a refresh / post-install / post-build rescan would
+	// drop a user-registered custom path and silently revert the dependency to Missing.
+	std::string const previousSelectedPath{ (dep.selectedLocation != nullptr) ? dep.selectedLocation->path : "" };
+	std::vector<SDependencyLocation> userLocations;
+
+	for (auto const& location : dep.foundLocations)
+	{
+		if (location.userRegistered)
+		{
+			userLocations.push_back(location);
+		}
+	}
+
 	dep.foundLocations.clear();
 	dep.selectedLocation = nullptr;
 	dep.status = EDependencyStatus::Missing;
@@ -199,6 +213,18 @@ void CDependencyManager::ScanDependency(SAdvancedDependencyInfo& dep)
 
 	dep.foundLocations = FindAllLocations(dep);
 
+	// Re-add preserved custom locations the scanner did not rediscover (kept user-registered).
+	for (auto const& userLocation : userLocations)
+	{
+		bool const alreadyPresent{ std::ranges::any_of(dep.foundLocations,
+			[&](SDependencyLocation const& loc) { return loc.path == userLocation.path; }) };
+
+		if (!alreadyPresent)
+		{
+			dep.foundLocations.push_back(userLocation);
+		}
+	}
+
 	RemoveDuplicateLocations(dep.foundLocations);
 
 	if (!dep.foundLocations.empty())
@@ -208,19 +234,26 @@ void CDependencyManager::ScanDependency(SAdvancedDependencyInfo& dep)
 				return a.priority < b.priority;
 			});
 
-		bool found{ false };
-
+		// Keep the user's prior choice if it survived and still works; else the first working one.
 		for (auto& location : dep.foundLocations)
 		{
-			if (!found && location.isWorking)
+			if (dep.selectedLocation == nullptr && location.isWorking && location.path == previousSelectedPath)
 			{
 				dep.selectedLocation = &location;
 				dep.status = EDependencyStatus::Available;
-				found = true;
 			}
 		}
 
-		if (!dep.selectedLocation)
+		for (auto& location : dep.foundLocations)
+		{
+			if (dep.selectedLocation == nullptr && location.isWorking)
+			{
+				dep.selectedLocation = &location;
+				dep.status = EDependencyStatus::Available;
+			}
+		}
+
+		if (dep.selectedLocation == nullptr)
 		{
 			dep.status = (dep.foundLocations.size() > 1) ?
 				EDependencyStatus::MultipleFound : EDependencyStatus::Broken;
@@ -1499,6 +1532,7 @@ bool CDependencyManager::RegisterAdditionalVersion(std::string_view identifier, 
 				newLocation.version = std::string{version};
 				newLocation.isWorking = isWorking;
 				newLocation.priority = static_cast<int>(dep->foundLocations.size());
+				newLocation.userRegistered = true;
 
 				// Save current selected path before push_back — it may reallocate and invalidate the pointer
 				std::string const prevSelectedPath = (dep->selectedLocation != nullptr) ? dep->selectedLocation->path : "";

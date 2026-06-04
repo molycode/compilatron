@@ -43,6 +43,7 @@ struct SDependencyLocation final
 	std::string version;        // Detected version string
 	bool isWorking;            // Tested and confirmed working
 	int priority;              // User preference priority (0=highest)
+	bool userRegistered{ false }; // Hand-added via RegisterAdditionalVersion; preserved across rescans
 };
 
 struct SAdvancedDependencyInfo final
