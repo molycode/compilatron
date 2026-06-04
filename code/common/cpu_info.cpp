@@ -238,14 +238,6 @@ SCpuInfo SCpuInfo::DetectInternal()
 }
 
 //////////////////////////////////////////////////////////////////////////
-int SCpuInfo::GetMaxParallelism() const
-{
-	// Total CPU parallelism capability = total available threads
-	// For hyperthreaded systems: logicalCores = total threads available
-	return logicalCores;
-}
-
-//////////////////////////////////////////////////////////////////////////
 int SCpuInfo::GetDefaultNumJobs() const
 {
 	return std::max(1, physicalCores);

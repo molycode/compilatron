@@ -19,17 +19,15 @@ namespace Ctrn
 //////////////////////////////////////////////////////////////////////////
 CProcessExecutor::SProcessResult CProcessExecutor::Execute(
 	std::string_view command,
-	std::string_view workingDir,
 	OutputCallback callback)
 {
-	return ExecuteArgs("/bin/sh", {"-c", std::string(command)}, workingDir, std::move(callback));
+	return ExecuteArgs("/bin/sh", {"-c", std::string(command)}, std::move(callback));
 }
 
 //////////////////////////////////////////////////////////////////////////
 CProcessExecutor::SProcessResult CProcessExecutor::ExecuteArgs(
 	std::string_view executable,
 	std::vector<std::string> const& args,
-	std::string_view workingDir,
 	OutputCallback callback)
 {
 	std::vector<std::unique_ptr<char[]>> argStorage;
@@ -52,7 +50,7 @@ CProcessExecutor::SProcessResult CProcessExecutor::ExecuteArgs(
 
 	argv.push_back(nullptr);
 
-	return ExecuteInternal(argv[0], argv.data(), environ, workingDir, callback);
+	return ExecuteInternal(argv[0], argv.data(), environ, callback);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -60,7 +58,6 @@ CProcessExecutor::SProcessResult CProcessExecutor::ExecuteInternal(
 	char const* executable,
 	char* const* argv,
 	char* const* envp,
-	std::string_view workingDir,
 	OutputCallback const& callback)
 {
 	SProcessResult result;
@@ -88,19 +85,6 @@ CProcessExecutor::SProcessResult CProcessExecutor::ExecuteInternal(
 	posix_spawnattr_init(&spawnAttr);
 	posix_spawnattr_setflags(&spawnAttr, POSIX_SPAWN_SETPGROUP);
 	posix_spawnattr_setpgroup(&spawnAttr, 0); // 0 = child's own pid becomes the pgid
-
-	if (!workingDir.empty())
-	{
-		if (chdir(std::string(workingDir).c_str()) != 0)
-		{
-			result.errorMessage = std::format("Failed to change directory to: {}", workingDir);
-			posix_spawn_file_actions_destroy(&fileActions);
-			posix_spawnattr_destroy(&spawnAttr);
-			close(pipeFds[0]);
-			close(pipeFds[1]);
-			return result;
-		}
-	}
 
 	pid_t pid;
 	int const spawnErr{ posix_spawn(&pid, executable, &fileActions, &spawnAttr, argv, envp) };

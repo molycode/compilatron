@@ -91,12 +91,6 @@ private:
 	void StopBuild();
 	void UpdateBuildStatus();
 	std::string GetCpuName() const;
-	std::string GenerateClangCMakeCommand();
-	std::string GenerateClangCMakeCommandFor(std::string_view version);
-	std::string GenerateGccConfigureCommand();
-	std::string GenerateGccConfigureCommandFor(std::string_view version);
-	std::string BuildTargetsString(SClangSettings const& clangConfig) const;
-	std::string BuildProjectsString(SClangSettings const& clangConfig) const;
 
 	void RenderProgressBarWithStatus(CCompilerUnit& unit);
 

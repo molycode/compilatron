@@ -236,7 +236,7 @@ bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
 			return !m_shouldStop.load();
 		};
 
-		result = CProcessExecutor::Execute(command, {}, streamCallback);
+		result = CProcessExecutor::Execute(command, streamCallback);
 
 		if (!partialLine.empty())
 		{

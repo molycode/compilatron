@@ -24,13 +24,11 @@ public:
 
 	[[nodiscard]] static SProcessResult Execute(
 		std::string_view command,
-		std::string_view workingDir = {},
 		OutputCallback callback = nullptr);
 
 	[[nodiscard]] static SProcessResult ExecuteArgs(
 		std::string_view executable,
 		std::vector<std::string> const& args,
-		std::string_view workingDir = {},
 		OutputCallback callback = nullptr);
 
 private:
@@ -39,7 +37,6 @@ private:
 		char const* executable,
 		char* const* argv,
 		char* const* envp,
-		std::string_view workingDir,
 		OutputCallback const& callback);
 };
 } // namespace Ctrn

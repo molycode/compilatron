@@ -11,9 +11,6 @@ struct SCpuInfo final
 
 	[[nodiscard]] static SCpuInfo Detect();
 
-	// Get total parallelism capability (total CPU threads)
-	int GetMaxParallelism() const;
-
 	// Get optimal default (physical cores)
 	int GetDefaultNumJobs() const;
 
