@@ -944,114 +944,7 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 {
 	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Starting build lifecycle for " + m_name);
 
-	bool success{ false };
-
-	if (!m_shouldStop)
-	{
-		ReportProgress(ECompilerStatus::Cloning, 0.2f, "Downloading/updating sources");
-
-		if (DownloadSources())
-		{
-			if (!m_shouldStop)
-			{
-				ReportProgress(ECompilerStatus::NotStarted, 0.1f, "Validating sources");
-
-				if (ValidateSources())
-				{
-					if (!m_shouldStop)
-					{
-						ReportProgress(ECompilerStatus::Building, 0.4f, "Configuring build");
-
-						if (Configure())
-						{
-							if (!m_shouldStop)
-							{
-								ReportProgress(ECompilerStatus::Building, 0.6f, "Compiling");
-
-								if (Build())
-								{
-									if (!m_shouldStop)
-									{
-										ReportProgress(ECompilerStatus::Building, 0.9f, "Installing");
-
-										if (Install())
-										{
-											success = true;
-											ReportProgress(ECompilerStatus::Success, 1.0f, "Ready");
-											m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Build completed successfully for " + m_name);
-										}
-										else
-										{
-											if (m_shouldStop)
-											{
-												SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-											}
-
-											gLog.Warning(Tge::Logging::ETarget::Listeners, "Install step failed for {}", m_name);
-										}
-									}
-									else
-									{
-										SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-									}
-								}
-								else
-								{
-									if (m_shouldStop)
-									{
-										SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-									}
-
-									gLog.Warning(Tge::Logging::ETarget::Listeners, "Build step failed for {}", m_name);
-								}
-							}
-							else
-							{
-								SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-							}
-						}
-						else
-						{
-							if (m_shouldStop)
-							{
-								SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-							}
-
-							gLog.Warning(Tge::Logging::ETarget::Listeners, "Configure step failed for {}", m_name);
-						}
-					}
-					else
-					{
-						SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-					}
-				}
-				else
-				{
-					gLog.Warning(Tge::Logging::ETarget::Listeners, "Source validation failed for {}", m_name);
-					SetStatus(ECompilerStatus::Failed, "Source validation failed");
-					SetFailureReason("Source validation failed after download");
-				}
-			}
-			else
-			{
-				SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-			}
-		}
-		else
-		{
-			gLog.Warning(Tge::Logging::ETarget::Listeners, "Source download failed for {}", m_name);
-			SetFailureReason("Failed to download/update sources");
-
-			if (!IsCompleted())
-			{
-				SetStatus(ECompilerStatus::Failed, "Source download failed");
-			}
-		}
-	}
-	else
-	{
-		SetStatus(ECompilerStatus::Aborted, "Stopped by user");
-	}
+	bool const success{ ExecuteBuildStages() };
 
 	TGE_ASSERT(IsCompleted(), "ExecuteBuildLifecycle exited without terminal status");
 
@@ -1061,6 +954,115 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 	}
 
 	ReportCompletion(success, m_failureReason);
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CCompilerUnit::ExecuteBuildStages()
+{
+	// Cancellation can arrive between stages; mark Aborted and bail before the next one.
+	auto const abortIfStopped = [this]() -> bool
+	{
+		if (m_shouldStop)
+		{
+			SetStatus(ECompilerStatus::Aborted, "Stopped by user");
+			return true;
+		}
+
+		return false;
+	};
+
+	if (abortIfStopped())
+	{
+		return false;
+	}
+
+	ReportProgress(ECompilerStatus::Cloning, 0.2f, "Downloading/updating sources");
+
+	if (!DownloadSources())
+	{
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Source download failed for {}", m_name);
+		SetFailureReason("Failed to download/update sources");
+
+		if (!IsCompleted())
+		{
+			SetStatus(ECompilerStatus::Failed, "Source download failed");
+		}
+
+		return false;
+	}
+
+	if (abortIfStopped())
+	{
+		return false;
+	}
+
+	ReportProgress(ECompilerStatus::NotStarted, 0.1f, "Validating sources");
+
+	if (!ValidateSources())
+	{
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Source validation failed for {}", m_name);
+		SetStatus(ECompilerStatus::Failed, "Source validation failed");
+		SetFailureReason("Source validation failed after download");
+		return false;
+	}
+
+	if (abortIfStopped())
+	{
+		return false;
+	}
+
+	ReportProgress(ECompilerStatus::Building, 0.4f, "Configuring build");
+
+	if (!Configure())
+	{
+		if (m_shouldStop)
+		{
+			SetStatus(ECompilerStatus::Aborted, "Stopped by user");
+		}
+
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Configure step failed for {}", m_name);
+		return false;
+	}
+
+	if (abortIfStopped())
+	{
+		return false;
+	}
+
+	ReportProgress(ECompilerStatus::Building, 0.6f, "Compiling");
+
+	if (!Build())
+	{
+		if (m_shouldStop)
+		{
+			SetStatus(ECompilerStatus::Aborted, "Stopped by user");
+		}
+
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Build step failed for {}", m_name);
+		return false;
+	}
+
+	if (abortIfStopped())
+	{
+		return false;
+	}
+
+	ReportProgress(ECompilerStatus::Building, 0.9f, "Installing");
+
+	if (!Install())
+	{
+		if (m_shouldStop)
+		{
+			SetStatus(ECompilerStatus::Aborted, "Stopped by user");
+		}
+
+		gLog.Warning(Tge::Logging::ETarget::Listeners, "Install step failed for {}", m_name);
+		return false;
+	}
+
+	ReportProgress(ECompilerStatus::Success, 1.0f, "Ready");
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Build completed successfully for " + m_name);
+	return true;
 }
 
 //////////////////////////////////////////////////////////////////////////

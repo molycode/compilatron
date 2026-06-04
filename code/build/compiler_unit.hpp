@@ -160,6 +160,11 @@ protected:
 
 	void ExecuteBuildLifecycle();
 
+	// Runs the linear Download -> Validate -> Configure -> Build -> Install pipeline,
+	// returning true only when every stage succeeded. Sets the terminal status
+	// (Aborted/Failed/Success) before returning.
+	[[nodiscard]] bool ExecuteBuildStages();
+
 	// Notifies external subscribers of progress/completion events
 	void ReportProgress(ECompilerStatus status, float progress, std::string const& task);
 	void ReportCompletion(bool success, std::string_view errorMessage = "");
