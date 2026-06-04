@@ -1104,6 +1104,14 @@ void CCompilerGUI::RenderGccAdvancedDialog()
 					ImGui::SetTooltip("--enable-linker-build-id: Build ID support for debugging");
 				}
 
+				ImGui::SameLine();
+				anyChanged |= ImGui::Checkbox(gcc.enableCet.uiName.data(), &gcc.enableCet.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("--enable-cet: Intel CET hardening (shadow stack + indirect branch tracking).\nBuilds GCC's runtime libraries CET-marked so programs linking them get full enforcement.\nNeeds CET-capable binutils; a no-op on CPUs without CET.");
+				}
+
 				ImGui::Text("Target arch:");
 				ImGui::SetNextItemWidth(200);
 				char withArchBuffer[128];
@@ -1158,6 +1166,24 @@ void CCompilerGUI::RenderGccAdvancedDialog()
 				if (ImGui::IsItemHovered())
 				{
 					ImGui::SetTooltip("--with-sysroot: Alternate sysroot for cross-compilation\nLeave empty for native builds");
+				}
+
+				ImGui::Text("Package version:");
+				ImGui::SetNextItemWidth(400);
+				char pkgVersionBuffer[256];
+				copyLen = std::min(gcc.pkgVersion.value.size(), sizeof(pkgVersionBuffer) - 1);
+				gcc.pkgVersion.value.copy(pkgVersionBuffer, copyLen);
+				pkgVersionBuffer[copyLen] = '\0';
+
+				if (ImGui::InputText("##PkgVersion", pkgVersionBuffer, sizeof(pkgVersionBuffer)))
+				{
+					gcc.pkgVersion = pkgVersionBuffer;
+					anyChanged = true;
+				}
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("--with-pkgversion: Provenance string shown after the version in 'gcc --version'\n(e.g. a farm/baseline tag). Leave empty for the bare '(GCC)' default.");
 				}
 			}
 

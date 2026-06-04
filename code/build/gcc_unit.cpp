@@ -293,6 +293,15 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 			cmd << " --disable-linker-build-id";
 		}
 
+		if (config.enableCet)
+		{
+			cmd << " --enable-cet";
+		}
+		else
+		{
+			cmd << " --disable-cet";
+		}
+
 		if (!config.withArch.value.empty())
 		{
 			cmd << " --with-arch=" << ShellQuote(config.withArch.value);
@@ -306,6 +315,11 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 		if (!config.withSysroot.value.empty())
 		{
 			cmd << " --with-sysroot=" << ShellQuote(config.withSysroot.value);
+		}
+
+		if (!config.pkgVersion.value.empty())
+		{
+			cmd << " --with-pkgversion=" << ShellQuote(config.pkgVersion.value);
 		}
 
 		std::string optLevel{};

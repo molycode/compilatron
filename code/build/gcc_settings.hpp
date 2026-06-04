@@ -26,9 +26,11 @@ struct SGccSettings final
 	SProperty<bool>              enablePlugin{           "gcc_enablePlugin",           "Plugin support",       true                        };
 	SProperty<bool>              enablePie{              "gcc_enablePie",              "PIE",                  true                        };
 	SProperty<bool>              enableBuildId{          "gcc_enableBuildId",          "Build ID",             true                        };
+	SProperty<bool>              enableCet{              "gcc_enableCet",              "CET",                  true                        };
 	SProperty<std::string>       withArch{               "gcc_withArch",               "Target arch",          ""                          };
 	SProperty<std::string>       withTune{               "gcc_withTune",               "Target tune",          ""                          };
 	SProperty<std::string>       withSysroot{            "gcc_withSysroot",            "Sysroot",              ""                          };
+	SProperty<std::string>       pkgVersion{             "gcc_pkgVersion",             "Package version",      ""                          };
 	SProperty<std::string>       customCFlags{           "gcc_customCFlags",           "CFLAGS",               ""                          };
 	SProperty<std::string>       customCxxFlags{         "gcc_customCxxFlags",         "CXXFLAGS",             ""                          };
 	SProperty<std::string>       additionalConfigureFlags{ "gcc_additionalConfigureFlags", "Extra configure flags", ""                      };
@@ -38,8 +40,8 @@ struct SGccSettings final
 		return std::tie(enabledLanguages, enableLto, optimizationLevel, generateDebugSymbols,
 		                enableBootstrap, enableShared, useSystemZlib, disableWerror,
 		                enableChecking, checkingLevel, disableMultilib, modernCppAbi,
-		                posixThreads, enablePlugin, enablePie, enableBuildId,
-		                withArch, withTune, withSysroot,
+		                posixThreads, enablePlugin, enablePie, enableBuildId, enableCet,
+		                withArch, withTune, withSysroot, pkgVersion,
 		                customCFlags, customCxxFlags, additionalConfigureFlags);
 	}
 
@@ -48,8 +50,8 @@ struct SGccSettings final
 		return std::tie(enabledLanguages, enableLto, optimizationLevel, generateDebugSymbols,
 		                enableBootstrap, enableShared, useSystemZlib, disableWerror,
 		                enableChecking, checkingLevel, disableMultilib, modernCppAbi,
-		                posixThreads, enablePlugin, enablePie, enableBuildId,
-		                withArch, withTune, withSysroot,
+		                posixThreads, enablePlugin, enablePie, enableBuildId, enableCet,
+		                withArch, withTune, withSysroot, pkgVersion,
 		                customCFlags, customCxxFlags, additionalConfigureFlags);
 	}
 
