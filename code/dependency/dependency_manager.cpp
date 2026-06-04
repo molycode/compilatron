@@ -63,6 +63,12 @@ void CDependencyManager::InitializeAllDependencies()
 
 	InitializeBuildTools();
 	InitializeLibraries();
+
+	// Detect what's actually present so the manager is queryable immediately after Initialize;
+	// callers should not have to remember a separate scan. Custom user paths are layered on top
+	// afterwards (e.g. LoadLocationSelectionsFromPresets) and survive because the build path
+	// never re-scans.
+	ScanAllDependencies();
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -59,8 +59,8 @@ struct SAdvancedDependencyInfo final
 	std::string checkCommand;                            // Command to verify functionality
 	std::string versionCommand;                          // Command to get version
 	std::vector<SDependencyLocation> foundLocations;     // All found installations
-	SDependencyLocation* selectedLocation;               // User's selected location
-	EDependencyStatus status;
+	SDependencyLocation* selectedLocation{ nullptr };    // User's selected location
+	EDependencyStatus status{ EDependencyStatus::Missing }; // Definite until ScanDependency runs
 
 	// Custom installation function (local installation only)
 	std::function<bool()> installFunc;
