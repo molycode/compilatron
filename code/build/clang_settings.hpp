@@ -44,6 +44,7 @@ struct SClangSettings final
 	SProperty<bool>          enableRtti{             "clang_enableRtti",             "RTTI",                 true                        };
 	SProperty<bool>          enableEh{               "clang_enableEh",               "Exception handling",   true                        };
 	SProperty<bool>          enableZlib{             "clang_enableZlib",             "zlib compression",     true                        };
+	SProperty<bool>          enableZstd{             "clang_enableZstd",             "zstd compression",     true                        };
 	SProperty<bool>          enableLibffi{           "clang_enableLibffi",           "libffi",               false                       };
 	SProperty<bool>          enableTerminfo{         "clang_enableTerminfo",         "Terminfo",             true                        };
 	SProperty<bool>          enableLibxml2{          "clang_enableLibxml2",          "libxml2",              false                       };
@@ -68,7 +69,7 @@ struct SClangSettings final
 		                projectLibcxx, projectLibcxxabi, projectLibunwind, projectLldb,
 		                projectOpenmp, projectPolly, projectPstl, projectMlir, projectFlang,
 		                projectBolt, customProjects,
-		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableLibffi,
+		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableZstd, enableLibffi,
 		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
 		                installUtils, ltoMode, linker, optimizedTablegen,
 		                generator, numNinjaLinkJobs, buildWithInstallRpath, additionalConfigureFlags);
@@ -82,7 +83,7 @@ struct SClangSettings final
 		                projectLibcxx, projectLibcxxabi, projectLibunwind, projectLldb,
 		                projectOpenmp, projectPolly, projectPstl, projectMlir, projectFlang,
 		                projectBolt, customProjects,
-		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableLibffi,
+		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableZstd, enableLibffi,
 		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
 		                installUtils, ltoMode, linker, optimizedTablegen,
 		                generator, numNinjaLinkJobs, buildWithInstallRpath, additionalConfigureFlags);

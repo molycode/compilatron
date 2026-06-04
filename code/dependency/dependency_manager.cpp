@@ -694,6 +694,21 @@ void CDependencyManager::InitializeLibraries()
 		m_dependencies.push_back(std::move(dep));
 	}
 
+	// zstd dev headers — recommended for LLVM/Clang (LLVM_ENABLE_ZSTD set to FORCE_ON when enabled)
+	{
+		auto dep = std::make_unique<SAdvancedDependencyInfo>();
+		dep->name = "zstd";
+		dep->identifier = "zstd";
+		dep->description = "zstd development headers (recommended for LLVM — enables zstd compression in debug info and object files)";
+		dep->systemPackage = "libzstd-dev"; // Ubuntu/Debian; Fedora/openSUSE: libzstd-devel; Arch: zstd
+		dep->category = EDependencyCategory::Library;
+		dep->requiredForGcc = false;
+		dep->requiredForClang = false; // Updated dynamically based on enableZstd setting
+		dep->checkCommand = "[ -f /usr/include/zstd.h ] && echo /usr/include/zstd.h";
+		dep->versionCommand = "pkg-config --modversion libzstd";
+		m_dependencies.push_back(std::move(dep));
+	}
+
 	// libtinfo dev headers — required for LLVM_ENABLE_TERMINFO=ON (colorized output via ncurses)
 	{
 		auto dep = std::make_unique<SAdvancedDependencyInfo>();

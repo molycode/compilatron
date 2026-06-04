@@ -163,6 +163,13 @@ void CCompilerGUI::Render()
 			}) };
 		g_dependencyManager.SetDynamicRequired("zlib", false, zlibEnabled);
 
+		bool const zstdEnabled{ std::any_of(m_compilerTabs.begin(), m_compilerTabs.end(),
+			[](SCompilerTab const& tab)
+			{
+				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableZstd.value;
+			}) };
+		g_dependencyManager.SetDynamicRequired("zstd", false, zstdEnabled);
+
 		m_showDependencyWindow = g_dependencyWindow.Render();
 	}
 

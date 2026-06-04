@@ -1621,6 +1621,14 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 				}
 
 				ImGui::SameLine();
+				anyChanged |= ImGui::Checkbox(clang.enableZstd.uiName.data(), &clang.enableZstd.value);
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("zstd compression: Enables zstd-compressed debug info and object files.\nRequires libzstd-dev (Ubuntu/Debian), libzstd-devel (Fedora), or zstd (Arch).");
+				}
+
+				ImGui::SameLine();
 				anyChanged |= ImGui::Checkbox(clang.enableLibffi.uiName.data(), &clang.enableLibffi.value);
 
 				if (ImGui::IsItemHovered())
