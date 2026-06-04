@@ -22,14 +22,11 @@ namespace fs = std::filesystem;
 void CCompilerBuilder::Initialize()
 {
 	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Initializing compiler builder with {} jobs", m_numJobs);
-	InitializeDependencies();
 
 	fs::path const dataPath{ g_dataDir };
 	m_buildDir = (dataPath / "build_compilers").string();
 	m_sourceDir = (dataPath / "sources").string();
 	m_installPrefix = (dataPath / "compilers").string();
-	m_depsDir = (dataPath / "dependencies").string();
-	m_depsBinDir = (dataPath / "dependencies" / "bin").string();
 
 	m_progress.statusMessage = "Ready to build";
 
@@ -172,15 +169,18 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 		gLog.Info(Tge::Logging::ETarget::File, "Phase 1: Checking build dependencies");
 		UpdateProgress(EBuildPhase::CheckingDependencies, 0.0f, "Checking build dependencies...");
 
-		if (!CheckDependencies())
+		// Trust the manager's current state — it mirrors the Dependencies tab and preserves
+		// user-registered custom locations. Do NOT re-scan here: ScanDependency rebuilds
+		// foundLocations from standard bin dirs only, which would wipe a custom path the user set.
+		if (!g_dependencyManager.AreAllRequiredDependenciesAvailable())
 		{
-			gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Phase 2: Dependencies missing, building locally");
-			UpdateProgress(EBuildPhase::InstallingDependencies, 0.0f, "Building missing dependencies locally...", "CMake, Ninja, and other build tools");
+			gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Phase 2: Dependencies missing, provisioning locally");
+			UpdateProgress(EBuildPhase::InstallingDependencies, 0.0f, "Installing missing dependencies locally...");
 
-			if (!BuildLocalDependencies())
+			if (!ProvisionMissingDependencies())
 			{
-				gLog.Error(Tge::Logging::ETarget::Listeners, "Failed to build required dependencies");
-				UpdateProgress(EBuildPhase::Failed, 0.0f, "Build failed: Failed to build required dependencies");
+				gLog.Error(Tge::Logging::ETarget::Listeners, "Failed to provision required dependencies");
+				UpdateProgress(EBuildPhase::Failed, 0.0f, "Build failed: Failed to provision required dependencies");
 				success = false;
 			}
 		}
@@ -270,362 +270,41 @@ bool CCompilerBuilder::CleanupPreviousBuild(SBuildSettings const& settings)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::CheckDependencies()
+bool CCompilerBuilder::ProvisionMissingDependencies()
 {
-	// Only perform actual dependency checking once per instance
-	if (!m_dependenciesChecked)
+	// Delegate provisioning to CDependencyManager (the single owner of download/build-from-source
+	// for build tools). The manager must already be scanned and have its required-flags set by the
+	// GUI before the build starts; BuildThreadFunc re-scans immediately before calling this.
+	std::vector<SAdvancedDependencyInfo*> const missing{ g_dependencyManager.GetMissingRequiredDependencies() };
+
+	std::vector<std::string> identifiers;
+	identifiers.reserve(missing.size());
+
+	for (auto const* dep : missing)
 	{
-		gLog.Info(Tge::Logging::ETarget::File, "CCompilerBuilder::CheckDependencies() - performing initial check");
-
-		for (auto& dep : m_dependencies)
-		{
-			UpdateProgress(EBuildPhase::CheckingDependencies, 0.0f,
-			              "Checking " + dep.name + "...", dep.checkCommand);
-
-			dep.available = CheckCommandExists(dep.checkCommand) || CheckLocalCommandExists(dep.checkCommand);
-
-			if (!dep.available && dep.required)
-			{
-				gLog.Warning(Tge::Logging::ETarget::File, "Missing: {}", dep.name);
-			}
-			else if (dep.available)
-			{
-				gLog.Info(Tge::Logging::ETarget::File, "Found: {}", dep.name);
-			}
-		}
-
-		m_dependenciesChecked = true;
-	}
-	else
-	{
-		gLog.Info(Tge::Logging::ETarget::File, "CCompilerBuilder::CheckDependencies() - using cached results");
+		identifiers.emplace_back(dep->identifier);
 	}
 
-	bool allAvailable{ true };
-
-	for (auto const& dep : m_dependencies)
-	{
-		if (!dep.available && dep.required)
-		{
-			allAvailable = false;
-		}
-	}
-
-	return allAvailable;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::BuildLocalDependencies()
-{
-	fs::create_directories(m_depsDir);
-	fs::create_directories(m_depsBinDir);
-
+	std::vector<std::string> const order{ g_dependencyManager.GetInstallationOrder(identifiers) };
 	bool success{ true };
 
-	for (auto const& dep : m_dependencies)
+	for (auto const& identifier : order)
 	{
-		if (!dep.available && dep.required)
+		if (!m_shouldStop)
 		{
-			if (dep.checkCommand == "cmake")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.2f, "Building CMake locally...");
+			UpdateProgress(EBuildPhase::InstallingDependencies, 0.0f, "Installing " + identifier + "...");
 
-				if (!DownloadAndBuildCMake())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "ninja")
+			if (!g_dependencyManager.InstallDependency(identifier))
 			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.5f, "Building Ninja locally...");
-
-				if (!DownloadAndBuildNinja())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "git")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.8f, "Building Git locally...");
-
-				if (!DownloadAndBuildGit())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "python3")
-			{
-				gLog.Warning(Tge::Logging::ETarget::Listeners, "Python3 must be installed via the system package manager.");
-				success = false; // Python3 is complex to build, require system installation
-			}
-			else if (dep.checkCommand == "make")
-			{
-				gLog.Info(Tge::Logging::ETarget::File, "Make not available system-wide. Using Ninja as primary build tool.");
-				// Make is optional since we prefer Ninja
-			}
-			else if (dep.checkCommand == "curl")
-			{
-				gLog.Warning(Tge::Logging::ETarget::Listeners, "curl not available — downloading cmake/ninja from source will fail.");
+				gLog.Error(Tge::Logging::ETarget::Listeners, "Failed to install dependency: {}", identifier);
 				success = false;
-			}
-			else if (dep.checkCommand == "unzip")
-			{
-				gLog.Warning(Tge::Logging::ETarget::Listeners, "unzip not available — extracting zip archives will fail.");
-				success = false;
-			}
-			else if (dep.checkCommand == "bison")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.15f, "Building Bison locally...");
-
-				if (!DownloadAndBuildBison())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "flex")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.25f, "Building Flex locally...");
-
-				if (!DownloadAndBuildFlex())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "autoconf")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.35f, "Building Autoconf locally...");
-
-				if (!DownloadAndBuildAutoconf())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "automake")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.45f, "Building Automake locally...");
-
-				if (!DownloadAndBuildAutomake())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "libtool")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.55f, "Building Libtool locally...");
-
-				if (!DownloadAndBuildLibtool())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "pkg-config")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.65f, "Building Pkg-Config locally...");
-
-				if (!DownloadAndBuildPkgConfig())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "perl")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.75f, "Building Perl locally...");
-
-				if (!DownloadAndBuildPerl())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "gettext")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.85f, "Building Gettext locally...");
-
-				if (!DownloadAndBuildGettext())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "makeinfo")
-			{
-				UpdateProgress(EBuildPhase::InstallingDependencies, 0.90f, "Building Texinfo locally...");
-
-				if (!DownloadAndBuildTexinfo())
-				{
-					success = false;
-				}
-			}
-			else if (dep.checkCommand == "gcc" || dep.checkCommand == "g++")
-			{
-				if (CheckCommandExists("clang") && CheckCommandExists("clang++"))
-				{
-					gLog.Info(Tge::Logging::ETarget::File, "Using system Clang as bootstrap compiler for GCC builds.");
-				}
-				else if (CheckLocalCommandExists("clang") && CheckLocalCommandExists("clang++"))
-				{
-					gLog.Info(Tge::Logging::ETarget::File, "Using locally built Clang as bootstrap compiler for GCC builds.");
-				}
-				else if (fs::exists("/home/thomas/compilers"))
-				{
-					gLog.Info(Tge::Logging::ETarget::File, "Searching for built compilers to use as bootstrap...");
-					bool bootstrapFound{ false };
-
-					for (auto const& entry : fs::directory_iterator("/home/thomas/compilers"))
-					{
-						if (!bootstrapFound && entry.is_directory())
-						{
-							std::string clangPath{ entry.path() / "bin" / "clang++" };
-
-							if (fs::exists(clangPath))
-							{
-								gLog.Info(Tge::Logging::ETarget::File, "Found bootstrap compiler: {}", clangPath);
-								bootstrapFound = true;
-							}
-						}
-					}
-				}
-				else
-				{
-					gLog.Error(Tge::Logging::ETarget::Listeners, "No bootstrap compiler available. Need GCC, Clang, or built compiler for bootstrapping.");
-					success = false;
-				}
 			}
 		}
 	}
 
+	g_dependencyManager.UpdateEnvironmentPaths();
+
 	return success;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildCMake()
-{
-	std::string cmakeVersion{ "3.30.3" };
-	std::string cmakeTarball{ "cmake-" + cmakeVersion + "-linux-x86_64.tar.gz" };
-	std::string downloadUrl{ "https://github.com/Kitware/CMake/releases/download/v" + cmakeVersion + "/" + cmakeTarball };
-
-	std::string downloadCmd{ "cd " + m_depsDir + " && curl -L -o " + cmakeTarball + " " + downloadUrl };
-
-	if (!ExecuteCommand(downloadCmd))
-	{
-		return false;
-	}
-
-	std::string extractCmd{ "cd " + m_depsDir + " && tar -xzf " + cmakeTarball };
-
-	if (!ExecuteCommand(extractCmd))
-	{
-		return false;
-	}
-
-	std::string copyCmd{ "cd " + m_depsDir + " && cp -r cmake-" + cmakeVersion + "-linux-x86_64/bin/* " + m_depsBinDir + "/" };
-	return ExecuteCommand(copyCmd);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildNinja()
-{
-	std::string downloadCmd{ "cd " + m_depsDir + " && curl -L -o ninja-linux.zip https://github.com/ninja-build/ninja/releases/latest/download/ninja-linux.zip" };
-
-	if (!ExecuteCommand(downloadCmd))
-	{
-		return false;
-	}
-
-	std::string extractCmd{ "cd " + m_depsDir + " && unzip -o ninja-linux.zip" };
-
-	if (!ExecuteCommand(extractCmd))
-	{
-		return false;
-	}
-
-	std::string copyCmd{ "cd " + m_depsDir + " && cp ninja " + m_depsBinDir + "/" };
-	return ExecuteCommand(copyCmd);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildGit()
-{
-	// For Git, we typically rely on system installation due to complexity
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Git must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildBison()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Bison must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildFlex()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Flex must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildAutoconf()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Autoconf must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildAutomake()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Automake must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildLibtool()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Libtool must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildPkgConfig()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Pkg-config must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildPerl()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Perl must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildGettext()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Gettext must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::DownloadAndBuildTexinfo()
-{
-	gLog.Warning(Tge::Logging::ETarget::Listeners, "Texinfo must be installed via the system package manager");
-	return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCompilerBuilder::InitializeDependencies()
-{
-	m_dependencies = {
-		{"CMake", "cmake", "cmake", EDependencyType::BuildTool, true, false},
-		{"Ninja", "ninja-build", "ninja", EDependencyType::BuildTool, true, false},
-		{"Git", "git", "git", EDependencyType::BuildTool, true, false},
-		{"Python3", "python3", "python3", EDependencyType::BuildTool, true, false},
-		{"GCC", "gcc", "gcc", EDependencyType::Compiler, false, false},
-		{"G++", "g++", "g++", EDependencyType::Compiler, false, false},
-		{"Make",  "make",  "make",  EDependencyType::BuildTool, false, false},
-		{"Curl",  "curl",  "curl",  EDependencyType::BuildTool, false, false},
-		{"Unzip", "unzip", "unzip", EDependencyType::BuildTool, false, false}
-	};
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -703,33 +382,6 @@ void CCompilerBuilder::UpdateProgress(EBuildPhase phase, float phaseProgress,
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::ExecuteCommand(std::string_view command, bool)
-{
-	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Executing: {}", command);
-
-	auto const result = CProcessExecutor::Execute(command);
-
-	if (!result.success)
-	{
-		gLog.Warning(Tge::Logging::ETarget::Listeners, "Command failed (exit {}): {}", result.exitCode, result.output);
-	}
-
-	return result.success;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::ExecuteCommandWithOutput(std::string_view command)
-{
-	return ExecuteCommand(command, true);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::CheckCommandExists(std::string_view command)
-{
-	return CProcessExecutor::Execute(std::format("which {} 2>/dev/null", command)).success;
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CCompilerBuilder::CleanupAfterBuild(SBuildSettings const& settings)
 {
 	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Starting post-build cleanup");
@@ -760,19 +412,6 @@ void CCompilerBuilder::CleanupAfterBuild(SBuildSettings const& settings)
 	}
 
 	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Post-build cleanup completed");
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::CheckLocalCommandExists(std::string_view command)
-{
-	fs::path localPath = fs::path(m_depsBinDir) / command;
-
-	if (fs::exists(localPath) && fs::is_regular_file(localPath))
-	{
-		return true;
-	}
-
-	return CheckCommandExists(command);
 }
 
 //////////////////////////////////////////////////////////////////////////

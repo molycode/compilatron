@@ -36,7 +36,9 @@ void CCompilerGUI::Initialize()
 	m_compilerBuilder->Initialize();
 	m_versionManager.Initialize();
 
-	// Initialize registry and dep manager before loading preset so their scans see correct state
+	// Initialize registry and dep manager before loading preset so their scans see correct state.
+	// InitializeAllDependencies now scans, so the manager is queryable from here on; the build path
+	// deliberately never re-scans (that would wipe user-registered custom locations).
 	g_compilerRegistry.Initialize();
 	g_dependencyManager.InitializeAllDependencies();
 

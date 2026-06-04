@@ -3,7 +3,6 @@
 #include "build/compiler_unit.hpp"
 #include "build/build_settings.hpp"
 #include "common/sleep_inhibitor.hpp"
-#include "dependency/dependency.hpp"
 #include "build/build_progress.hpp"
 #include <tge/non_copyable.hpp>
 #include <string>
@@ -55,28 +54,10 @@ private:
 	void BuildThreadFunc(SBuildSettings const& settings);
 
 	bool CleanupPreviousBuild(SBuildSettings const& settings);
-	bool CheckDependencies();
-	bool BuildLocalDependencies();
+	bool ProvisionMissingDependencies();
 	void CleanupAfterBuild(SBuildSettings const& settings);
 	void UpdateProgress(EBuildPhase phase, float phaseProgress,
 	                   std::string const& statusMessage, std::string const& task = "");
-
-	bool ExecuteCommand(std::string_view command, bool captureOutput = true);
-	bool ExecuteCommandWithOutput(std::string_view command);
-	bool CheckCommandExists(std::string_view command);
-	bool CheckLocalCommandExists(std::string_view command);
-	bool DownloadAndBuildCMake();
-	bool DownloadAndBuildNinja();
-	bool DownloadAndBuildGit();
-	bool DownloadAndBuildBison();
-	bool DownloadAndBuildFlex();
-	bool DownloadAndBuildAutoconf();
-	bool DownloadAndBuildAutomake();
-	bool DownloadAndBuildLibtool();
-	bool DownloadAndBuildPkgConfig();
-	bool DownloadAndBuildPerl();
-	bool DownloadAndBuildGettext();
-	bool DownloadAndBuildTexinfo();
 
 	std::thread m_buildThread;
 	std::atomic<bool> m_isBuilding{ false };
@@ -95,17 +76,11 @@ private:
 	ProgressCallback m_progressCallback;
 	CompletionCallback m_completionCallback;
 
-	std::vector<SDependency> m_dependencies;
-	bool m_dependenciesChecked{ false };
-
 	std::string m_buildDir;
 	std::string m_sourceDir;
 	std::string m_installPrefix;
-	std::string m_depsDir;
-	std::string m_depsBinDir;
 	int m_numJobs{ std::max(1, static_cast<int>(std::thread::hardware_concurrency() / 2)) };
 
-	void InitializeDependencies();
 	std::string GetDistroId() const;
 };
 
