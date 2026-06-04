@@ -8,12 +8,25 @@
 
 namespace Ctrn
 {
+namespace
+{
+// A full 40-char hex commit SHA — the only ref form GitHub's fetch-by-SHA accepts
+bool IsFullCommitSha(std::string_view ref)
+{
+	return ref.size() == 40 && std::ranges::all_of(ref, [](char c)
+	{
+		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+	});
+}
+} // namespace
+
 void CVersionSelectorDialog::Open(std::vector<std::string> const& allVersions, std::string_view currentSelection, ECompilerKind kind)
 {
 	m_isOpen = true;
 	m_selectedVersion = currentSelection;
 	m_kind = kind;
 	m_filterBuffer[0] = '\0'; // Clear filter
+	m_commitBuffer[0] = '\0'; // Clear commit input
 	m_activeTab = 0; // Start with Branches tab
 
 	CategorizeVersions(allVersions);
@@ -31,6 +44,7 @@ void CVersionSelectorDialog::Open(std::vector<std::string> const& branches, std:
 	m_selectedVersion = currentSelection;
 	m_kind = kind;
 	m_filterBuffer[0] = '\0'; // Clear filter
+	m_commitBuffer[0] = '\0'; // Clear commit input
 	m_activeTab = 0; // Start with Branches tab
 
 	// Use pre-separated branches and tags (no heuristic needed!)
@@ -43,14 +57,14 @@ void CVersionSelectorDialog::Open(std::vector<std::string> const& branches, std:
 }
 
 //////////////////////////////////////////////////////////////////////////
-std::string CVersionSelectorDialog::Render()
+SVersionSelection CVersionSelectorDialog::Render()
 {
 	if (!m_isOpen)
 	{
-		return "";
+		return {};
 	}
 
-	std::string selectedVersion;
+	SVersionSelection selection;
 
 	// Create popup window with adaptive sizing
 	float windowWidth{ CalculateOptimalWidth() };
@@ -59,24 +73,28 @@ std::string CVersionSelectorDialog::Render()
 
 	if (ImGui::BeginPopupModal("Select Version##VersionSelector", &m_isOpen))
 	{
-		RenderFilterInput();
 		RenderTabBar();
-
-		// Separator
 		ImGui::Separator();
 
-		std::string result{ RenderVersionList() };
-
-		if (!result.empty())
+		if (m_activeTab == 2)
 		{
-			selectedVersion = result;
+			selection = RenderCommitInput();
+		}
+		else
+		{
+			RenderFilterInput();
+			selection.value = RenderVersionList();
+		}
+
+		if (!selection.value.empty())
+		{
 			Close();
 		}
 
 		ImGui::EndPopup();
 	}
 
-	return selectedVersion;
+	return selection;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -189,8 +207,52 @@ void CVersionSelectorDialog::RenderTabBar()
 			ImGui::EndTabItem();
 		}
 
+		if (ImGui::BeginTabItem("Commit"))
+		{
+			m_activeTab = 2;
+			ImGui::EndTabItem();
+		}
+
 		ImGui::EndTabBar();
 	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+SVersionSelection CVersionSelectorDialog::RenderCommitInput()
+{
+	SVersionSelection selection;
+
+	ImGui::TextWrapped("Pin the build to an exact upstream commit. Enter a full 40-character commit SHA "
+		"(e.g. a resolved release-branch tip) for a reproducible, traceable build.");
+	ImGui::Spacing();
+
+	ImGui::Text("Commit SHA:");
+	ImGui::SetNextItemWidth(-1.0f);
+	ImGui::InputText("##commitSha", m_commitBuffer, sizeof(m_commitBuffer), ImGuiInputTextFlags_AutoSelectAll);
+
+	std::string const sha{ m_commitBuffer };
+	bool const valid{ IsFullCommitSha(sha) };
+
+	if (!sha.empty() && !valid)
+	{
+		ImGui::TextColored(ImVec4(0.9f, 0.5f, 0.3f, 1.0f), "Must be exactly 40 hexadecimal characters (%zu entered).", sha.size());
+	}
+	else
+	{
+		ImGui::Spacing();
+	}
+
+	ImGui::BeginDisabled(!valid);
+
+	if (ImGui::Button("Use this commit"))
+	{
+		selection.value = sha;
+		selection.isCommit = true;
+	}
+
+	ImGui::EndDisabled();
+
+	return selection;
 }
 
 //////////////////////////////////////////////////////////////////////////

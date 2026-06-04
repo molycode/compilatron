@@ -180,12 +180,27 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 			ImGui::OpenPopup("Select Version##VersionSelector");
 		}
 
-		std::string selectedVersionFromDialog{ m_versionSelectorDialog.Render() };
+		SVersionSelection const selection{ m_versionSelectorDialog.Render() };
 
-		if (!selectedVersionFromDialog.empty())
+		if (!selection.value.empty())
 		{
-			tab.name = selectedVersionFromDialog;
-			tab.tabDisplayName = selectedVersionFromDialog;
+			if (selection.isCommit)
+			{
+				// Keep the readable label; the SHA is the build ref via sourceRef.
+				tab.sourceRef = selection.value;
+
+				if (tab.name.empty())
+				{
+					tab.name = "commit " + selection.value.substr(0, 8);
+				}
+			}
+			else
+			{
+				tab.name = selection.value;
+				tab.sourceRef.clear();
+			}
+
+			tab.tabDisplayName = tab.name;
 			tab.tabLabel = tab.tabDisplayName + "###" + std::to_string(tab.id);
 			SaveActivePreset();
 
@@ -193,7 +208,8 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 
 			if (unitIt != m_compilerUnits.end() && unitIt->second != nullptr)
 			{
-				unitIt->second->SetName(selectedVersionFromDialog);
+				unitIt->second->SetName(tab.name);
+				unitIt->second->UpdateBuildConfig(BuildConfigFromTab(tab));
 			}
 		}
 
@@ -260,6 +276,27 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 
 					ImGui::EndTooltip();
 				}
+			}
+		}
+	}
+
+	if (!tab.sourceRef.empty())
+	{
+		ImGui::TextColored(ImVec4(0.85f, 0.7f, 0.3f, 1.0f), "Pinned commit: %.8s", tab.sourceRef.c_str());
+		ImGui::SameLine();
+
+		std::string const clearPinId{ "Clear pin##" + std::to_string(tab.id) };
+
+		if (ImGui::SmallButton(clearPinId.c_str()))
+		{
+			tab.sourceRef.clear();
+			SaveActivePreset();
+
+			auto const unitIt = m_compilerUnits.find(tab.id);
+
+			if (unitIt != m_compilerUnits.end() && unitIt->second != nullptr)
+			{
+				unitIt->second->UpdateBuildConfig(BuildConfigFromTab(tab));
 			}
 		}
 	}

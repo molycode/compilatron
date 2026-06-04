@@ -8,7 +8,14 @@
 
 namespace Ctrn
 {
-// GitHub-style version selector with tabbed Branches/Tags interface and real-time filtering
+// Result of a selection: a branch/tag name, or a pinned commit SHA when isCommit is true
+struct SVersionSelection final
+{
+	std::string value;
+	bool isCommit{ false };
+};
+
+// GitHub-style version selector with tabbed Branches/Tags/Commit interface and real-time filtering
 class CVersionSelectorDialog final : private Tge::SNoCopyNoMove
 {
 public:
@@ -22,8 +29,8 @@ public:
 	void Open(std::vector<std::string> const& branches, std::vector<std::string> const& tags,
 	          std::string_view currentSelection, ECompilerKind kind);
 
-	// Call each frame; returns selected version string, or empty if no selection made
-	[[nodiscard]] std::string Render();
+	// Call each frame; returns the selection, or an empty value if no selection was made
+	[[nodiscard]] SVersionSelection Render();
 
 	void Close();
 
@@ -32,8 +39,9 @@ public:
 private:
 
 	bool m_isOpen{ false };
-	int m_activeTab{ 0 }; // 0=Branches, 1=Tags
+	int m_activeTab{ 0 }; // 0=Branches, 1=Tags, 2=Commit
 	char m_filterBuffer[64]{};
+	char m_commitBuffer[64]{};
 	std::string m_selectedVersion;
 	ECompilerKind m_kind{ ECompilerKind::Gcc };
 
@@ -48,6 +56,7 @@ private:
 	void RenderFilterInput();
 	void RenderTabBar();
 	std::string RenderVersionList();
+	SVersionSelection RenderCommitInput();
 	bool MatchesFilter(std::string_view version) const;
 	float CalculateOptimalWidth() const;
 };
