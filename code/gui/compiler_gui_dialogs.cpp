@@ -1780,6 +1780,72 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					}
 				}
 
+				ImGui::Text("%s:", clang.defaultCxxStdlib.uiName.data());
+				ImGui::SetNextItemWidth(150.0f);
+				int defaultCxxStdlib{ static_cast<int>(clang.defaultCxxStdlib.value) };
+				static constexpr std::array<char const*, 2> cxxStdlibs = {"libstdc++", "libc++"};
+
+				if (ImGui::Combo("##DefaultCxxStdlib", &defaultCxxStdlib, cxxStdlibs.data(), static_cast<int>(cxxStdlibs.size())))
+				{
+					clang.defaultCxxStdlib = static_cast<ECxxStdlib>(defaultCxxStdlib);
+					anyChanged = true;
+				}
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("CLANG_DEFAULT_CXX_STDLIB: C++ standard library clang links by default.\nlibstdc++ is the Linux platform default; libc++ requires the libc++ runtime.");
+				}
+
+				if (clang.defaultCxxStdlib.value == ECxxStdlib::LibCxx && !clang.projectLibcxx.value)
+				{
+					ImGui::SameLine();
+					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.1f, 1.0f), "Enable libc++ in LLVM Runtimes");
+				}
+
+				ImGui::Text("%s:", clang.defaultRtlib.uiName.data());
+				ImGui::SetNextItemWidth(150.0f);
+				int defaultRtlib{ static_cast<int>(clang.defaultRtlib.value) };
+				static constexpr std::array<char const*, 2> rtlibs = {"libgcc", "compiler-rt"};
+
+				if (ImGui::Combo("##DefaultRtlib", &defaultRtlib, rtlibs.data(), static_cast<int>(rtlibs.size())))
+				{
+					clang.defaultRtlib = static_cast<ERtlib>(defaultRtlib);
+					anyChanged = true;
+				}
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("CLANG_DEFAULT_RTLIB: compiler runtime clang links by default.\nlibgcc is the Linux platform default; compiler-rt requires the compiler-rt runtime.");
+				}
+
+				if (clang.defaultRtlib.value == ERtlib::CompilerRt && !clang.projectCompilerRt.value)
+				{
+					ImGui::SameLine();
+					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.1f, 1.0f), "Enable compiler-rt in LLVM Runtimes");
+				}
+
+				ImGui::Text("%s:", clang.defaultUnwindlib.uiName.data());
+				ImGui::SetNextItemWidth(150.0f);
+				int defaultUnwindlib{ static_cast<int>(clang.defaultUnwindlib.value) };
+				static constexpr std::array<char const*, 2> unwindlibs = {"libgcc", "libunwind"};
+
+				if (ImGui::Combo("##DefaultUnwindlib", &defaultUnwindlib, unwindlibs.data(), static_cast<int>(unwindlibs.size())))
+				{
+					clang.defaultUnwindlib = static_cast<EUnwindlib>(defaultUnwindlib);
+					anyChanged = true;
+				}
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("CLANG_DEFAULT_UNWINDLIB: unwinder clang links by default.\nlibgcc is the Linux platform default; libunwind requires the libunwind runtime.");
+				}
+
+				if (clang.defaultUnwindlib.value == EUnwindlib::LibUnwind && !clang.projectLibunwind.value)
+				{
+					ImGui::SameLine();
+					ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.1f, 1.0f), "Enable libunwind in LLVM Runtimes");
+				}
+
 				if (clang.generator == ECMakeGenerator::Ninja)
 				{
 					int const calculatedDefault{ (clang.buildType == EBuildType::Release || clang.buildType == EBuildType::MinSizeRel)

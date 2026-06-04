@@ -4,6 +4,9 @@
 #include "build/build_type.hpp"
 #include "build/cpp_standard.hpp"
 #include "build/cmake_generator.hpp"
+#include "build/cxx_stdlib.hpp"
+#include "build/rtlib.hpp"
+#include "build/unwindlib.hpp"
 
 #include <array>
 #include <string_view>
@@ -46,6 +49,33 @@ struct SEnumMeta<ECMakeGenerator>
 	static constexpr auto items = std::to_array<std::string_view>(
 	{
 		"Unix Makefiles", "Ninja"
+	});
+};
+
+template<>
+struct SEnumMeta<ECxxStdlib>
+{
+	static constexpr auto items = std::to_array<std::string_view>(
+	{
+		"libstdc++", "libc++"
+	});
+};
+
+template<>
+struct SEnumMeta<ERtlib>
+{
+	static constexpr auto items = std::to_array<std::string_view>(
+	{
+		"libgcc", "compiler-rt"
+	});
+};
+
+template<>
+struct SEnumMeta<EUnwindlib>
+{
+	static constexpr auto items = std::to_array<std::string_view>(
+	{
+		"libgcc", "libunwind"
 	});
 };
 } // namespace Ctrn

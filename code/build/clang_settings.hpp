@@ -4,6 +4,9 @@
 #include "build/build_type.hpp"
 #include "build/cpp_standard.hpp"
 #include "build/cmake_generator.hpp"
+#include "build/cxx_stdlib.hpp"
+#include "build/rtlib.hpp"
+#include "build/unwindlib.hpp"
 
 #include <string>
 #include <tuple>
@@ -55,6 +58,9 @@ struct SClangSettings final
 	SProperty<std::string>   ltoMode{               "clang_ltoMode",                "LTO mode",             "Off"                       };
 	SProperty<std::string>   linker{                 "clang_linker",                 "Linker",               "bfd"                       };
 	SProperty<bool>          optimizedTablegen{      "clang_optimizedTablegen",      "Optimized TableGen",   true                        };
+	SProperty<ECxxStdlib>    defaultCxxStdlib{       "clang_defaultCxxStdlib",       "Default C++ stdlib",   ECxxStdlib::LibStdCxx       };
+	SProperty<ERtlib>        defaultRtlib{           "clang_defaultRtlib",           "Default rtlib",        ERtlib::LibGcc             };
+	SProperty<EUnwindlib>    defaultUnwindlib{       "clang_defaultUnwindlib",       "Default unwindlib",    EUnwindlib::LibGcc         };
 
 	SProperty<ECMakeGenerator> generator{            "clang_generator",              "Generator",            ECMakeGenerator::Ninja      };
 	SProperty<int>           numNinjaLinkJobs{       "clang_ninjaLinkJobs",          "Ninja link jobs",      0                           };
@@ -72,6 +78,7 @@ struct SClangSettings final
 		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableZstd, enableLibffi,
 		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
 		                installUtils, ltoMode, linker, optimizedTablegen,
+		                defaultCxxStdlib, defaultRtlib, defaultUnwindlib,
 		                generator, numNinjaLinkJobs, buildWithInstallRpath, additionalConfigureFlags);
 	}
 
@@ -86,6 +93,7 @@ struct SClangSettings final
 		                customCFlags, customCxxFlags, enableRtti, enableEh, enableZlib, enableZstd, enableLibffi,
 		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
 		                installUtils, ltoMode, linker, optimizedTablegen,
+		                defaultCxxStdlib, defaultRtlib, defaultUnwindlib,
 		                generator, numNinjaLinkJobs, buildWithInstallRpath, additionalConfigureFlags);
 	}
 

@@ -510,6 +510,12 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 			cmd << " -DLLVM_USE_LINKER=bfd";
 		}
 
+		// Default toolchain libraries the built clang links unless overridden per-compile
+		// (e.g. -stdlib=libc++). The first value of each is the platform default on Linux.
+		cmd << " -DCLANG_DEFAULT_CXX_STDLIB=" << (config.defaultCxxStdlib == ECxxStdlib::LibCxx ? "libc++" : "libstdc++");
+		cmd << " -DCLANG_DEFAULT_RTLIB=" << (config.defaultRtlib == ERtlib::CompilerRt ? "compiler-rt" : "libgcc");
+		cmd << " -DCLANG_DEFAULT_UNWINDLIB=" << (config.defaultUnwindlib == EUnwindlib::LibUnwind ? "libunwind" : "libgcc");
+
 		// Additional configure flags (applied last so they can override anything)
 		if (!config.additionalConfigureFlags.value.empty())
 		{
