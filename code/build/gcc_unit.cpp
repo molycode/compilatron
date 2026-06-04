@@ -107,7 +107,7 @@ bool CGccUnit::PostDownloadHook(std::string_view sourcesDir)
 	if (!success)
 	{
 		m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to download GCC prerequisites");
-		ReportProgress(ECompilerStatus::Failed, 0.2f, "Prerequisites download failed");
+		ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Prerequisites download failed");
 	}
 	else
 	{

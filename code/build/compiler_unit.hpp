@@ -43,6 +43,14 @@ enum class ECompilerStatus
 	Aborted
 };
 
+// Coarse 0..1 progress boundaries for the build lifecycle phases, shared between the
+// driver and the individual stages so both report consistent values (no duplicated literals).
+inline constexpr float ProgressDownloadEnd{ 0.2f };
+inline constexpr float ProgressConfigureEnd{ 0.4f };
+inline constexpr float ProgressCompileStart{ 0.6f };
+inline constexpr float ProgressCompileEnd{ 0.9f };
+inline constexpr float ProgressReady{ 1.0f };
+
 // Base class for compiler build units; derived classes provide compiler-specific hooks
 class CCompilerUnit : private Tge::SNoCopyNoMove
 {
@@ -137,6 +145,7 @@ protected:
 	Tge::Logging::CLog m_unitLog;
 
 	std::atomic<float> m_progress{ 0.0f };
+	float m_lastLoggedProgress{ -1.0f }; // Build-thread only; per-instance so units don't share log state
 	std::string m_currentTask;
 	std::string m_failureReason;
 	mutable std::mutex m_stateMutex;

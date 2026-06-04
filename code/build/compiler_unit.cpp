@@ -168,12 +168,10 @@ void CCompilerUnit::SetProgress(float progress)
 {
 	m_progress = progress;
 
-	static float lastLoggedProgress = -1.0f;
-
-	if (progress - lastLoggedProgress >= 0.1f || progress >= 1.0f)
+	if (progress - m_lastLoggedProgress >= 0.1f || progress >= 1.0f)
 	{
 		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Progress: " + std::to_string(static_cast<int>(progress * 100)) + "%");
-		lastLoggedProgress = progress;
+		m_lastLoggedProgress = progress;
 	}
 }
 
@@ -324,7 +322,7 @@ bool CCompilerUnit::ExecuteGitFetchWithRetry(std::string_view sourcesDir, std::s
 		if (!fetchSucceeded && !m_shouldStop)
 		{
 			m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to fetch latest changes after " + std::to_string(maxRetries) + " attempts");
-			ReportProgress(ECompilerStatus::Failed, 0.2f, "Source fetch failed");
+			ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source fetch failed");
 			return false;
 		}
 
@@ -559,7 +557,7 @@ bool CCompilerUnit::DownloadSources()
 			else
 			{
 				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to update existing repository");
-				ReportProgress(ECompilerStatus::Failed, 0.2f, "Source update failed");
+				ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source update failed");
 			}
 		}
 	}
@@ -606,7 +604,7 @@ bool CCompilerUnit::DownloadSources()
 			else
 			{
 				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to clone sources");
-				ReportProgress(ECompilerStatus::Failed, 0.2f, "Source download failed");
+				ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source download failed");
 			}
 		}
 
@@ -616,7 +614,7 @@ bool CCompilerUnit::DownloadSources()
 			{
 				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Sources downloaded successfully");
 				SetStatus(ECompilerStatus::Cloning, "Sources downloaded");
-				SetProgress(0.2f);
+				SetProgress(ProgressDownloadEnd);
 				success = true;
 			}
 		}
@@ -692,20 +690,20 @@ bool CCompilerUnit::Configure()
 			if (success)
 			{
 				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Configuration completed successfully");
-				SetProgress(0.4f);
+				SetProgress(ProgressConfigureEnd);
 			}
 			else if (!m_shouldStop)
 			{
 				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Configuration failed");
 				SetFailureReason("Configure command failed");
-				ReportProgress(ECompilerStatus::Failed, 0.4f, "Configuration failed");
+				ReportProgress(ECompilerStatus::Failed, ProgressConfigureEnd, "Configuration failed");
 			}
 		}
 		else
 		{
 			gLog.Warning(Tge::Logging::ETarget::File, "Configure: command is empty for '{}' — was Initialize() called?", m_name);
 			SetFailureReason("Configure command could not be generated");
-			ReportProgress(ECompilerStatus::Failed, 0.4f, "Configuration failed");
+			ReportProgress(ECompilerStatus::Failed, ProgressConfigureEnd, "Configuration failed");
 		}
 	}
 	else
@@ -721,9 +719,6 @@ std::function<void(std::string_view)> CCompilerUnit::CreateBuildObserver()
 {
 	// Default: parse Ninja's [current/total] progress lines.
 	// Derived classes override this for other build systems (e.g. CGccUnit for make).
-	constexpr float CompileStart{ 0.6f };
-	constexpr float CompileEnd{ 0.9f };
-
 	return [this](std::string_view line)
 	{
 		if (!line.empty() && line[0] == '[')
@@ -754,7 +749,7 @@ std::function<void(std::string_view)> CCompilerUnit::CreateBuildObserver()
 				if (e1 == std::errc{} && e2 == std::errc{} && total > 0)
 				{
 					float const fraction{ static_cast<float>(current) / static_cast<float>(total) };
-					float const progress{ CompileStart + fraction * (CompileEnd - CompileStart) };
+					float const progress{ ProgressCompileStart + fraction * (ProgressCompileEnd - ProgressCompileStart) };
 					ReportProgress(ECompilerStatus::Building, progress,
 					               std::format("Compiling {}/{} files", current, total));
 				}
@@ -780,7 +775,7 @@ bool CCompilerUnit::Build()
 	else if (!m_shouldStop)
 	{
 		SetFailureReason("Build command failed");
-		ReportProgress(ECompilerStatus::Failed, 0.6f, "Build failed");
+		ReportProgress(ECompilerStatus::Failed, ProgressCompileStart, "Build failed");
 	}
 
 	return success;
@@ -844,13 +839,13 @@ bool CCompilerUnit::Install()
 		OnPostInstall(installPath);
 		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Installation completed successfully");
 		SetStatus(ECompilerStatus::Success, "Ready");
-		SetProgress(1.0f);
+		SetProgress(ProgressReady);
 	}
 	else if (!m_shouldStop)
 	{
 		m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Installation failed");
 		SetFailureReason("Install command failed");
-		ReportProgress(ECompilerStatus::Failed, 0.9f, "Install failed");
+		ReportProgress(ECompilerStatus::Failed, ProgressCompileEnd, "Install failed");
 	}
 
 	return success;
@@ -976,7 +971,7 @@ bool CCompilerUnit::ExecuteBuildStages()
 		return false;
 	}
 
-	ReportProgress(ECompilerStatus::Cloning, 0.2f, "Downloading/updating sources");
+	ReportProgress(ECompilerStatus::Cloning, ProgressDownloadEnd, "Downloading/updating sources");
 
 	if (!DownloadSources())
 	{
@@ -996,7 +991,9 @@ bool CCompilerUnit::ExecuteBuildStages()
 		return false;
 	}
 
-	ReportProgress(ECompilerStatus::NotStarted, 0.1f, "Validating sources");
+	// Validation belongs to the Cloning phase; keep status/progress where the download left off
+	// (the old NotStarted/0.1 here reverted the status and moved the bar backward from 0.2).
+	ReportProgress(ECompilerStatus::Cloning, ProgressDownloadEnd, "Validating sources");
 
 	if (!ValidateSources())
 	{
@@ -1011,7 +1008,7 @@ bool CCompilerUnit::ExecuteBuildStages()
 		return false;
 	}
 
-	ReportProgress(ECompilerStatus::Building, 0.4f, "Configuring build");
+	ReportProgress(ECompilerStatus::Building, ProgressConfigureEnd, "Configuring build");
 
 	if (!Configure())
 	{
@@ -1029,7 +1026,7 @@ bool CCompilerUnit::ExecuteBuildStages()
 		return false;
 	}
 
-	ReportProgress(ECompilerStatus::Building, 0.6f, "Compiling");
+	ReportProgress(ECompilerStatus::Building, ProgressCompileStart, "Compiling");
 
 	if (!Build())
 	{
@@ -1047,7 +1044,7 @@ bool CCompilerUnit::ExecuteBuildStages()
 		return false;
 	}
 
-	ReportProgress(ECompilerStatus::Building, 0.9f, "Installing");
+	ReportProgress(ECompilerStatus::Building, ProgressCompileEnd, "Installing");
 
 	if (!Install())
 	{
@@ -1060,7 +1057,7 @@ bool CCompilerUnit::ExecuteBuildStages()
 		return false;
 	}
 
-	ReportProgress(ECompilerStatus::Success, 1.0f, "Ready");
+	ReportProgress(ECompilerStatus::Success, ProgressReady, "Ready");
 	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Build completed successfully for " + m_name);
 	return true;
 }
