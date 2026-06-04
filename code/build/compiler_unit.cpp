@@ -32,7 +32,7 @@ static std::string ResolveGit()
 static bool IsGitTag(std::string_view sourcesDir, std::string_view target)
 {
 	std::string const git{ ResolveGit() };
-	std::string const cmd{ "cd \"" + std::string{sourcesDir} + "\" && " + git + " show-ref --verify --quiet refs/tags/" + std::string{target} + " 2>/dev/null" };
+	std::string const cmd{ "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(git) + " show-ref --verify --quiet refs/tags/" + ShellQuote(target) + " 2>/dev/null" };
 	return CProcessExecutor::Execute(cmd).success;
 }
 
@@ -292,7 +292,7 @@ bool CCompilerUnit::ExecuteGitFetchWithRetry(std::string_view sourcesDir, std::s
 
 		for (int attempt = 1; attempt <= maxRetries && !m_shouldStop; attempt++)
 		{
-			std::string fetchCmd{ std::format("cd \"{}\" && {} fetch --depth 1 origin \"{}\" --progress 2>&1", sourcesDir, ResolveGit(), targetBranch) };
+			std::string fetchCmd{ std::format("cd {} && {} fetch --depth 1 origin {} --progress 2>&1", ShellQuote(sourcesDir), ShellQuote(ResolveGit()), ShellQuote(targetBranch)) };
 
 			if (ExecuteCommand(fetchCmd))
 			{
@@ -540,12 +540,12 @@ bool CCompilerUnit::DownloadSources()
 			if (isTag)
 			{
 				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetBranch + "' is a tag, checking out tag...");
-				checkoutCmd = "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout \"tags/" + targetBranch + "\"";
+				checkoutCmd = "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " checkout " + ShellQuote("tags/" + targetBranch);
 			}
 			else
 			{
 				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetBranch + "' is a branch, updating branch...");
-				checkoutCmd = "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout -B " + targetBranch + " FETCH_HEAD";
+				checkoutCmd = "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " checkout -B " + ShellQuote(targetBranch) + " FETCH_HEAD";
 			}
 
 			if (ExecuteCommand(checkoutCmd))
@@ -566,7 +566,7 @@ bool CCompilerUnit::DownloadSources()
 		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cloning fresh repository for target: " + targetBranch);
 		fs::create_directories(fs::path(sourcesDir).parent_path());
 
-		std::string const shallowBranchCloneCmd{ ResolveGit() + " clone --branch \"" + targetBranch + "\" --depth 1 --progress \"" + sourceUrl + "\" \"" + sourcesDir + "\" 2>&1" };
+		std::string const shallowBranchCloneCmd{ ShellQuote(ResolveGit()) + " clone --branch " + ShellQuote(targetBranch) + " --depth 1 --progress " + ShellQuote(sourceUrl) + " " + ShellQuote(sourcesDir) + " 2>&1" };
 		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Attempting shallow clone for tag/recent branch: " + shallowBranchCloneCmd);
 
 		bool cloned{ ExecuteCommand(shallowBranchCloneCmd) };
@@ -574,17 +574,17 @@ bool CCompilerUnit::DownloadSources()
 		if (!cloned)
 		{
 			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Shallow clone with branch failed, trying shallow clone + fetch + checkout...");
-			std::string const defaultCloneCmd{ ResolveGit() + " clone --depth 1 --progress \"" + sourceUrl + "\" \"" + sourcesDir + "\" 2>&1" };
+			std::string const defaultCloneCmd{ ShellQuote(ResolveGit()) + " clone --depth 1 --progress " + ShellQuote(sourceUrl) + " " + ShellQuote(sourcesDir) + " 2>&1" };
 
 			if (ExecuteCommand(defaultCloneCmd))
 			{
 				cloned = true;
-				std::string const fetchCmd{ "cd \"" + sourcesDir + "\" && " + ResolveGit() + " fetch --depth 1 origin \"" + targetBranch + "\":\"" + targetBranch + "\" 2>&1" };
+				std::string const fetchCmd{ "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " fetch --depth 1 origin " + ShellQuote(targetBranch) + ":" + ShellQuote(targetBranch) + " 2>&1" };
 				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Fetching target branch: " + fetchCmd);
 
 				if (ExecuteCommand(fetchCmd))
 				{
-					std::string const checkoutCmd{ "cd \"" + sourcesDir + "\" && " + ResolveGit() + " checkout \"" + targetBranch + "\" 2>&1" };
+					std::string const checkoutCmd{ "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " checkout " + ShellQuote(targetBranch) + " 2>&1" };
 					m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Checking out target branch: " + checkoutCmd);
 
 					if (ExecuteCommand(checkoutCmd))

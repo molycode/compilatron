@@ -144,4 +144,29 @@ bool HasProblematicPathCharacters(std::string_view path)
 
 	return path.find_first_of(problematicChars) != std::string_view::npos;
 }
+
+//////////////////////////////////////////////////////////////////////////
+std::string ShellQuote(std::string_view value)
+{
+	// POSIX-portable single-quote escaping: everything between single quotes is literal,
+	// so the only character needing care is ' itself, closed and re-opened as '\''.
+	std::string result;
+	result.reserve(value.size() + 2);
+	result += '\'';
+
+	for (char const c : value)
+	{
+		if (c == '\'')
+		{
+			result += "'\\''";
+		}
+		else
+		{
+			result += c;
+		}
+	}
+
+	result += '\'';
+	return result;
+}
 } // namespace Ctrn

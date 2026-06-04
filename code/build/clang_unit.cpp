@@ -114,12 +114,12 @@ std::string CClangUnit::GenerateInstallCommand() const
 
 	if (GetClangConfig().generator == ECMakeGenerator::UnixMakefiles)
 	{
-		cmd << "PATH=\"" << clangPath << ":$PATH\" && cd " << GetBuildPath()
+		cmd << "PATH=" << ShellQuote(clangPath) << ":$PATH && cd " << ShellQuote(GetBuildPath())
 		    << " && make install";
 	}
 	else
 	{
-		cmd << "PATH=\"" << clangPath << ":$PATH\" " << cmake << " --install " << GetBuildPath();
+		cmd << "PATH=" << ShellQuote(clangPath) << ":$PATH " << ShellQuote(cmake) << " --install " << ShellQuote(GetBuildPath());
 	}
 
 	return cmd.str();
@@ -159,7 +159,7 @@ std::expected<std::string, std::string> CClangUnit::GetCompilerCMakeFlags() cons
 		else
 		{
 			gLog.Info(Tge::Logging::ETarget::File, "CClangUnit: Using compilers: CC='{}', CXX='{}'", cCompiler, cxxCompiler);
-			result = std::string{"-DCMAKE_C_COMPILER=\""} + cCompiler + "\" -DCMAKE_CXX_COMPILER=\"" + cxxCompiler + "\"";
+			result = std::string{"-DCMAKE_C_COMPILER="} + ShellQuote(cCompiler) + " -DCMAKE_CXX_COMPILER=" + ShellQuote(cxxCompiler);
 		}
 	}
 
@@ -178,17 +178,17 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 	if (compilerFlags)
 	{
 		std::ostringstream cmd;
-		cmd << "cd \"" << GetBuildPath() << "\" && ";
+		cmd << "cd " << ShellQuote(GetBuildPath()) << " && ";
 
 		std::string const cmakeSelected{ g_dependencyManager.GetSelectedPath("cmake") };
 	std::string const cmake{ cmakeSelected.empty() ? "cmake" : cmakeSelected };
 
 		if (!buildConfig.dependenciesDir.empty())
 		{
-			cmd << "PATH=\"" << BuildClangPath(buildConfig.dependenciesDir) << ":$PATH\" ";
+			cmd << "PATH=" << ShellQuote(BuildClangPath(buildConfig.dependenciesDir)) << ":$PATH ";
 		}
 
-		cmd << cmake << " -S \"" << GetSourcePath() << "/llvm\"";
+		cmd << ShellQuote(cmake) << " -S " << ShellQuote(GetSourcePath() + "/llvm");
 
 		if (!compilerFlags.value().empty())
 		{
@@ -222,7 +222,7 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 		cmd << " -DCMAKE_CXX_STANDARD_REQUIRED=" << (config.cxxStandardRequired ? "True" : "False");
 		cmd << " -DCMAKE_CXX_EXTENSIONS=" << (config.cxxExtensions ? "True" : "False");
 
-		cmd << " -DCMAKE_INSTALL_PREFIX=\"" << GetInstallPath() << "\"";
+		cmd << " -DCMAKE_INSTALL_PREFIX=" << ShellQuote(GetInstallPath());
 
 		if (config.buildWithInstallRpath)
 		{
@@ -371,12 +371,12 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 
 		if (!config.customCFlags.value.empty())
 		{
-			cmd << " -DCMAKE_C_FLAGS=\"" << config.customCFlags << "\"";
+			cmd << " -DCMAKE_C_FLAGS=" << ShellQuote(config.customCFlags.value);
 		}
 
 		if (!config.customCxxFlags.value.empty())
 		{
-			cmd << " -DCMAKE_CXX_FLAGS=\"" << config.customCxxFlags << "\"";
+			cmd << " -DCMAKE_CXX_FLAGS=" << ShellQuote(config.customCxxFlags.value);
 		}
 
 		cmd << " -DLLVM_ENABLE_RTTI=" << (config.enableRtti ? "ON" : "OFF");
@@ -440,7 +440,7 @@ std::string CClangUnit::GenerateBuildCommand() const
 	auto const& buildConfig = GetBuildConfig();
 
 	std::ostringstream cmd;
-	cmd << "PATH=\"" << BuildClangPath(buildConfig.dependenciesDir) << ":$PATH\" && cd " << GetBuildPath();
+	cmd << "PATH=" << ShellQuote(BuildClangPath(buildConfig.dependenciesDir)) << ":$PATH && cd " << ShellQuote(GetBuildPath());
 
 	if (config.generator == ECMakeGenerator::UnixMakefiles)
 	{
@@ -457,7 +457,7 @@ std::string CClangUnit::GenerateBuildCommand() const
 			ninjaCmd = std::filesystem::exists(localNinja) ? localNinja : "ninja";
 		}
 
-		cmd << " && " << ninjaCmd << " -j" << buildConfig.numJobs;
+		cmd << " && " << ShellQuote(ninjaCmd) << " -j" << buildConfig.numJobs;
 	}
 
 	return cmd.str();

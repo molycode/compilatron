@@ -68,6 +68,11 @@ extern std::atomic<bool> g_mainWindowNeedsResize;
 // Returns true if path contains spaces, parentheses, or other shell-problematic characters
 [[nodiscard]] bool HasProblematicPathCharacters(std::string_view path);
 
+// Quotes a value for safe interpolation into a /bin/sh command line (POSIX single-quote
+// escaping). Neutralises spaces and every shell metacharacter; use for any path, URL, git
+// ref, or single-argument free-text value spliced into a generated build command.
+[[nodiscard]] std::string ShellQuote(std::string_view value);
+
 // Wake up the main render loop from any thread. Call whenever background state changes need display.
 void RequestRedraw();
 } // namespace Ctrn

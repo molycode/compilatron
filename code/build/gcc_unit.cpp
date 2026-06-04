@@ -92,14 +92,14 @@ std::vector<std::string> CGccUnit::GetRequiredSourcePaths() const
 std::string CGccUnit::GenerateInstallCommand() const
 {
 	std::ostringstream cmd;
-	cmd << "PATH=" << BuildGccPath(GetBuildConfig().dependenciesDir) << ":$PATH && cd " << GetBuildPath() << " && make install";
+	cmd << "PATH=" << ShellQuote(BuildGccPath(GetBuildConfig().dependenciesDir)) << ":$PATH && cd " << ShellQuote(GetBuildPath()) << " && make install";
 	return cmd.str();
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CGccUnit::PostDownloadHook(std::string_view sourcesDir)
 {
-	std::string const prereqCmd{ "cd \"" + std::string{sourcesDir} + "\" && contrib/download_prerequisites" };
+	std::string const prereqCmd{ "cd " + ShellQuote(sourcesDir) + " && contrib/download_prerequisites" };
 	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Downloading GCC prerequisites: " + prereqCmd);
 
 	bool const success{ ExecuteCommand(prereqCmd) };
@@ -151,7 +151,7 @@ std::expected<std::string, std::string> CGccUnit::GetCompilerConfigureFlags() co
 		else
 		{
 			gLog.Info(Tge::Logging::ETarget::File, "CGccUnit: Using compilers: CC='{}', CXX='{}'", cCompiler, cxxCompiler);
-			result = std::string{"CC=\""} + cCompiler + "\" CXX=\"" + cxxCompiler + "\"";
+			result = std::string{"CC="} + ShellQuote(cCompiler) + " CXX=" + ShellQuote(cxxCompiler);
 		}
 	}
 
@@ -170,11 +170,11 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 	if (compilerFlags)
 	{
 		std::ostringstream cmd;
-		cmd << "cd \"" << GetBuildPath() << "\" && ";
+		cmd << "cd " << ShellQuote(GetBuildPath()) << " && ";
 
 		if (!buildConfig.dependenciesDir.empty())
 		{
-			cmd << "PATH=\"" << BuildGccPath(buildConfig.dependenciesDir) << ":$PATH\" ";
+			cmd << "PATH=" << ShellQuote(BuildGccPath(buildConfig.dependenciesDir)) << ":$PATH ";
 		}
 
 		if (!compilerFlags.value().empty())
@@ -182,16 +182,16 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 			cmd << compilerFlags.value() << " ";
 		}
 
-		cmd << "\"" << GetSourcePath() << "/configure\"";
+		cmd << ShellQuote(GetSourcePath() + "/configure");
 
-		cmd << " --prefix=\"" << GetInstallPath() << "\"";
+		cmd << " --prefix=" << ShellQuote(GetInstallPath());
 
 		// Prevent sub-configure cache races under parallel make
 		cmd << " --cache-file=/dev/null";
 
 		if (!config.enabledLanguages.value.empty())
 		{
-			cmd << " --enable-languages=" << config.enabledLanguages;
+			cmd << " --enable-languages=" << ShellQuote(config.enabledLanguages.value);
 		}
 
 		if (config.enableLto)
@@ -229,7 +229,7 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 
 		if (config.enableChecking)
 		{
-			cmd << " --enable-checking=" << config.checkingLevel;
+			cmd << " --enable-checking=" << ShellQuote(config.checkingLevel.value);
 		}
 		else
 		{
@@ -288,17 +288,17 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 
 		if (!config.withArch.value.empty())
 		{
-			cmd << " --with-arch=" << config.withArch;
+			cmd << " --with-arch=" << ShellQuote(config.withArch.value);
 		}
 
 		if (!config.withTune.value.empty())
 		{
-			cmd << " --with-tune=" << config.withTune;
+			cmd << " --with-tune=" << ShellQuote(config.withTune.value);
 		}
 
 		if (!config.withSysroot.value.empty())
 		{
-			cmd << " --with-sysroot=" << config.withSysroot;
+			cmd << " --with-sysroot=" << ShellQuote(config.withSysroot.value);
 		}
 
 		std::string optLevel{};
@@ -332,7 +332,7 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 
 		if (!cflags.empty())
 		{
-			cmd << " CFLAGS=\"" << cflags << "\"";
+			cmd << " CFLAGS=" << ShellQuote(cflags);
 		}
 
 		std::string cxxflags{ optLevel };
@@ -349,7 +349,7 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 
 		if (!cxxflags.empty())
 		{
-			cmd << " CXXFLAGS=\"" << cxxflags << "\"";
+			cmd << " CXXFLAGS=" << ShellQuote(cxxflags);
 		}
 
 		// Additional configure flags (applied last so they can override anything)
@@ -434,7 +434,7 @@ std::string CGccUnit::GenerateBuildCommand() const
 	auto const& buildConfig = GetBuildConfig();
 
 	std::ostringstream cmd;
-	cmd << "PATH=" << BuildGccPath(buildConfig.dependenciesDir) << ":$PATH && cd \"" << GetBuildPath() << "\" && make -j" << buildConfig.numJobs;
+	cmd << "PATH=" << ShellQuote(BuildGccPath(buildConfig.dependenciesDir)) << ":$PATH && cd " << ShellQuote(GetBuildPath()) << " && make -j" << buildConfig.numJobs;
 
 	return cmd.str();
 }
