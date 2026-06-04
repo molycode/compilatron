@@ -5,6 +5,7 @@
 #include <expected>
 #include <vector>
 #include <string>
+#include <filesystem>
 
 namespace Ctrn
 {
@@ -26,6 +27,7 @@ protected:
 	std::string              GetDefaultSourceUrl()    const override;
 	std::vector<std::string> GetRequiredSourcePaths() const override;
 	std::string              GenerateInstallCommand() const override;
+	void                     OnPostInstall(std::filesystem::path const& installPath) override;
 
 private:
 

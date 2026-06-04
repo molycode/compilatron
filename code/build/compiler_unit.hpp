@@ -14,6 +14,7 @@
 #include <mutex>
 #include <functional>
 #include <expected>
+#include <filesystem>
 
 namespace Ctrn
 {
@@ -175,5 +176,8 @@ protected:
 	virtual std::string              GenerateInstallCommand() const = 0;
 	virtual bool                     PostDownloadHook(std::string_view sourcesDir);
 	[[nodiscard]] virtual bool       PreConfigureHook();
+
+	// Writes post-install artifacts (e.g. driver config files). Default: no-op.
+	virtual void                     OnPostInstall(std::filesystem::path const& installPath);
 };
 } // namespace Ctrn

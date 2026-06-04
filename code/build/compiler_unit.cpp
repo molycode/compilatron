@@ -483,6 +483,11 @@ bool CCompilerUnit::PreConfigureHook()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CCompilerUnit::OnPostInstall(std::filesystem::path const&)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
 bool CCompilerUnit::ValidateSources()
 {
 	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Validating sources...");
@@ -836,6 +841,7 @@ bool CCompilerUnit::Install()
 
 	if (success)
 	{
+		OnPostInstall(installPath);
 		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Installation completed successfully");
 		SetStatus(ECompilerStatus::Success, "Ready");
 		SetProgress(1.0f);
