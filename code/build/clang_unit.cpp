@@ -554,4 +554,11 @@ void CClangUnit::OnPostInstall(std::filesystem::path const& installPath)
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////
+std::string CClangUnit::GetVersionProbeCommand(std::filesystem::path const& installPath) const
+{
+	std::filesystem::path const bin{ installPath / "bin" / "clang" };
+	return std::filesystem::exists(bin) ? ShellQuote(bin.string()) + " --version 2>/dev/null" : std::string{};
+}
+
 } // namespace Ctrn

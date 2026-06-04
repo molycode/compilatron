@@ -31,6 +31,7 @@ protected:
 	std::vector<std::string> GetRequiredSourcePaths() const override;
 	std::string              GenerateInstallCommand() const override;
 	bool                     PostDownloadHook(std::string_view sourcesDir) override;
+	std::string              GetVersionProbeCommand(std::filesystem::path const& installPath) const override;
 
 private:
 

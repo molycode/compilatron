@@ -76,6 +76,13 @@ std::string CGccUnit::GetDefaultSourceUrl() const
 }
 
 //////////////////////////////////////////////////////////////////////////
+std::string CGccUnit::GetVersionProbeCommand(std::filesystem::path const& installPath) const
+{
+	std::filesystem::path const bin{ installPath / "bin" / "gcc" };
+	return std::filesystem::exists(bin) ? ShellQuote(bin.string()) + " -dumpfullversion 2>/dev/null" : std::string{};
+}
+
+//////////////////////////////////////////////////////////////////////////
 std::vector<std::string> CGccUnit::GetRequiredSourcePaths() const
 {
 	return {

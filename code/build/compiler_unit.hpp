@@ -140,6 +140,9 @@ private:
 	std::string m_buildCommand;
 	std::string m_installCommand;
 
+	// Writes a neutral build-info.json provenance manifest into the install root on success.
+	void WriteBuildManifest(std::filesystem::path const& installPath);
+
 protected:
 
 	Tge::Logging::CLog m_unitLog;
@@ -193,5 +196,11 @@ protected:
 
 	// Writes post-install artifacts (e.g. driver config files). Default: no-op.
 	virtual void                     OnPostInstall(std::filesystem::path const& installPath);
+
+	// Shell command whose first output line is the installed compiler's version string
+	// (clang: "clang --version"; gcc: "gcc -dumpfullversion"). Empty when the binary is
+	// missing. The base runs it for the build manifest — binary name and flag differ per
+	// compiler, so the command is built here and executed centrally.
+	virtual std::string              GetVersionProbeCommand(std::filesystem::path const& installPath) const = 0;
 };
 } // namespace Ctrn

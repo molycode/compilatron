@@ -7,6 +7,7 @@
 #include "common/process_executor.hpp"
 #include <tge/init/assert.hpp>
 #include <tge/logging/log_system.hpp>
+#include <nlohmann/json.hpp>
 #include <format>
 #include <chrono>
 #include <ctime>
@@ -69,6 +70,22 @@ static std::string GetCompilerFingerprint(std::string const& compilerPath)
 	return result;
 }
 
+//////////////////////////////////////////////////////////////////////////
+// Runs a command and returns its output with trailing whitespace stripped; empty on failure
+static std::string CaptureTrimmed(std::string_view command)
+{
+	CProcessExecutor::SProcessResult const result{ CProcessExecutor::Execute(command) };
+	std::string output{ result.success ? result.output : std::string{} };
+
+	while (!output.empty() && (output.back() == '\n' || output.back() == '\r' || output.back() == ' ' || output.back() == '\t'))
+	{
+		output.pop_back();
+	}
+
+	return output;
+}
+
+//////////////////////////////////////////////////////////////////////////
 CCompilerUnit::CCompilerUnit(ECompilerKind type, std::string displayName, SBuildSettings const& globalSettings, SCompilerBuildConfig const& buildConfig)
 	: m_type(type)
 	, m_name(std::move(displayName))
@@ -837,6 +854,7 @@ bool CCompilerUnit::Install()
 	if (success)
 	{
 		OnPostInstall(installPath);
+		WriteBuildManifest(installPath);
 		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Installation completed successfully");
 		SetStatus(ECompilerStatus::Success, "Ready");
 		SetProgress(ProgressReady);
@@ -849,6 +867,69 @@ bool CCompilerUnit::Install()
 	}
 
 	return success;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCompilerUnit::WriteBuildManifest(std::filesystem::path const& installPath)
+{
+	std::string const sourcesDir{ GetSourcePath() };
+	std::string const git{ ShellQuote(ResolveGit()) };
+	std::string const inSources{ "cd " + ShellQuote(sourcesDir) + " && " + git + " " };
+
+	// Resolved commit — available on any checkout (tag, branch, or detached SHA).
+	std::string const commit{ CaptureTrimmed(inSources + "rev-parse HEAD 2>/dev/null") };
+
+	// "tag+N-gSHA" identity needs tags + history a --depth 1 clone lacks, so fetch tags shallowly
+	// first (best-effort), then describe. Non-fatal — the manifest still records `commit`.
+	CProcessExecutor::SProcessResult const tagFetch{ CProcessExecutor::Execute(inSources + "fetch --tags --depth 1 origin 2>/dev/null") };
+
+	if (!tagFetch.success)
+	{
+		gLog.Info(Tge::Logging::ETarget::File, "{}: build manifest: shallow tag fetch failed; describe may be abbreviated", m_name);
+	}
+
+	std::string const describe{ CaptureTrimmed(inSources + "describe --tags --always 2>/dev/null") };
+
+	if (describe.empty())
+	{
+		gLog.Warning(Tge::Logging::ETarget::File, "{}: build manifest: git describe unavailable", m_name);
+	}
+
+	std::string version{ CaptureTrimmed(GetVersionProbeCommand(installPath)) };
+	version = version.substr(0, version.find('\n')); // first line (clang --version is multi-line)
+
+	std::string const buildDate{ std::format("{:%Y-%m-%dT%H:%M:%SZ}",
+		std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now())) };
+
+	// Neutral filename and contents — describes the compiler, never the build tool — so the
+	// manifest stays clean when the install is bootstrapped or copied to the build farm.
+	nlohmann::json manifest;
+	manifest["ref"]        = std::string{ GetName() };
+	manifest["commit"]     = commit;
+
+	if (!describe.empty())
+	{
+		manifest["describe"] = describe;
+	}
+
+	manifest["source_url"] = GetDefaultSourceUrl();
+	manifest["version"]    = version;
+	manifest["build_date"] = buildDate;
+
+	std::filesystem::path const manifestPath{ installPath / "build-info.json" };
+	std::ofstream file{ manifestPath };
+
+	if (file.is_open())
+	{
+		file << manifest.dump(2) << '\n';
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, std::format(
+			"Wrote build manifest: commit={}, describe={}, version={}",
+			commit, describe.empty() ? "(n/a)" : describe, version));
+	}
+	else
+	{
+		gLog.Warning(Tge::Logging::ETarget::File, "{}: failed to write build manifest: {}", m_name, manifestPath.string());
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////

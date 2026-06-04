@@ -28,6 +28,7 @@ protected:
 	std::vector<std::string> GetRequiredSourcePaths() const override;
 	std::string              GenerateInstallCommand() const override;
 	void                     OnPostInstall(std::filesystem::path const& installPath) override;
+	std::string              GetVersionProbeCommand(std::filesystem::path const& installPath) const override;
 
 private:
 
