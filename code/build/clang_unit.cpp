@@ -453,58 +453,6 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 		{
 			cmd << " -DLLVM_USE_LINKER=lld";
 			cmd << " -DCLANG_DEFAULT_LINKER=lld";
-
-			// Resolve and log which ld.lld will be used
-			std::filesystem::path lldPath;
-			std::string const compiler{ GetResolvedCompiler() };
-			std::error_code ec;
-			std::filesystem::path const resolved{ std::filesystem::canonical(compiler, ec) };
-			std::filesystem::path const compilerDir{ ec
-				? std::filesystem::path{ compiler }.parent_path()
-				: resolved.parent_path() };
-
-			std::filesystem::path const colocated{ compilerDir / "ld.lld" };
-
-			if (std::filesystem::exists(colocated))
-			{
-				lldPath = colocated;
-			}
-			else
-			{
-				char const* pathEnv{ std::getenv("PATH") };
-
-				if (pathEnv != nullptr)
-				{
-					std::string_view pathStr{ pathEnv };
-					size_t start{ 0 };
-
-					while (lldPath.empty())
-					{
-						size_t const colon{ pathStr.find(':', start) };
-						std::string_view const dir{ colon == std::string_view::npos
-							? pathStr.substr(start)
-							: pathStr.substr(start, colon - start) };
-
-						if (!dir.empty())
-						{
-							std::filesystem::path const candidate{ std::filesystem::path{ dir } / "ld.lld" };
-
-							if (std::filesystem::exists(candidate))
-							{
-								lldPath = candidate;
-							}
-						}
-
-						if (colon == std::string_view::npos)
-						{
-							break;
-						}
-
-						start = colon + 1;
-					}
-				}
-			}
-
 		}
 		else if (config.linker.value == "bfd")
 		{
