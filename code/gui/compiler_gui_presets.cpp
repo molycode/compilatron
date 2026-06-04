@@ -228,13 +228,13 @@ void CCompilerGUI::RenderPresetControls()
 	}
 
 	ImGui::SameLine();
-	ImGui::TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "%.0f GiB RAM", g_cpuInfo.totalMemoryGB);
+	ImGui::TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "%.0f GiB RAM", g_cpuInfo.totalMemoryGiB);
 
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
-		ImGui::Text("Total System Memory: %.1f GiB", g_cpuInfo.totalMemoryGB);
-		ImGui::Text("Currently Available: %.1f GiB", g_cpuInfo.availableMemoryGB);
+		ImGui::Text("Total System Memory: %.1f GiB", g_cpuInfo.totalMemoryGiB);
+		ImGui::Text("Currently Available: %.1f GiB", g_cpuInfo.availableMemoryGiB);
 		ImGui::EndTooltip();
 	}
 

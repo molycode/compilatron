@@ -48,19 +48,19 @@ SCpuInfo SCpuInfo::DetectInternal()
 
 	if (GlobalMemoryStatusEx(&memInfo))
 	{
-		info.totalMemoryGB     = static_cast<double>(memInfo.ullTotalPhys) / (1024.0 * 1024.0 * 1024.0);
-		info.availableMemoryGB = static_cast<double>(memInfo.ullAvailPhys) / (1024.0 * 1024.0 * 1024.0);
+		info.totalMemoryGiB     = static_cast<double>(memInfo.ullTotalPhys) / (1024.0 * 1024.0 * 1024.0);
+		info.availableMemoryGiB = static_cast<double>(memInfo.ullAvailPhys) / (1024.0 * 1024.0 * 1024.0);
 	}
 	else
 	{
-		info.totalMemoryGB     = 8;
-		info.availableMemoryGB = 8;
+		info.totalMemoryGiB     = 8;
+		info.availableMemoryGiB = 8;
 		gLog.Warning(Tge::Logging::ETarget::File, "SCpuInfo: Windows: Failed to detect memory, using 8 GiB fallback");
 	}
 #else
 	// Linux: Parse /proc/meminfo
-	info.totalMemoryGB     = 8; // Default fallback
-	info.availableMemoryGB = 8;
+	info.totalMemoryGiB     = 8; // Default fallback
+	info.availableMemoryGiB = 8;
 	std::ifstream meminfo("/proc/meminfo");
 
 	if (meminfo.is_open())
@@ -111,7 +111,7 @@ SCpuInfo SCpuInfo::DetectInternal()
 
 				if (kib >= 0)
 				{
-					info.totalMemoryGB = static_cast<double>(kib) / (1024.0 * 1024.0);
+					info.totalMemoryGiB = static_cast<double>(kib) / (1024.0 * 1024.0);
 					foundTotal = true;
 				}
 			}
@@ -122,7 +122,7 @@ SCpuInfo SCpuInfo::DetectInternal()
 
 				if (kib >= 0)
 				{
-					info.availableMemoryGB = static_cast<double>(kib) / (1024.0 * 1024.0);
+					info.availableMemoryGiB = static_cast<double>(kib) / (1024.0 * 1024.0);
 					foundAvailable = true;
 				}
 			}
@@ -233,7 +233,7 @@ SCpuInfo SCpuInfo::DetectInternal()
 #endif // CTRN_PLATFORM_WINDOWS
 
 	gLog.Info(Tge::Logging::ETarget::File, "SCpuInfo: {}/{} cores, {:.2f} GiB RAM",
-		info.logicalCores, info.physicalCores, info.totalMemoryGB);
+		info.logicalCores, info.physicalCores, info.totalMemoryGiB);
 	return info;
 }
 
@@ -246,11 +246,11 @@ int SCpuInfo::GetDefaultNumJobs() const
 //////////////////////////////////////////////////////////////////////////
 int SCpuInfo::GetDefaultLinkJobs() const
 {
-	// Default for Release builds: Use ~62% of RAM for linking (4GB per job)
+	// Default for Release builds: Use ~62% of RAM for linking (4 GiB per job)
 	// This leaves ~38% free for system and other processes
-	constexpr long GB_PER_LINK_JOB = 4;
-	long defaultLinkMemoryGB{ static_cast<long>(totalMemoryGB * 0.625) }; // 62.5%
-	int defaultLinkJobs{ static_cast<int>(std::max(1L, defaultLinkMemoryGB / GB_PER_LINK_JOB)) };
+	constexpr long GiBPerLinkJob = 4;
+	long defaultLinkMemoryGiB{ static_cast<long>(totalMemoryGiB * 0.625) }; // 62.5%
+	int defaultLinkJobs{ static_cast<int>(std::max(1L, defaultLinkMemoryGiB / GiBPerLinkJob)) };
 
 	// Cap at a reasonable maximum to prevent runaway values on very large systems
 	return std::min(defaultLinkJobs, 20);
@@ -259,11 +259,11 @@ int SCpuInfo::GetDefaultLinkJobs() const
 //////////////////////////////////////////////////////////////////////////
 int SCpuInfo::GetDefaultLinkJobsConservative() const
 {
-	// Default for Debug/RelWithDebInfo builds: Use ~62% of RAM for linking (9GB per job)
+	// Default for Debug/RelWithDebInfo builds: Use ~62% of RAM for linking (9 GiB per job)
 	// Conservative estimate for builds with debug info and less optimization
-	constexpr long GB_PER_LINK_JOB = 9;
-	long defaultLinkMemoryGB{ static_cast<long>(totalMemoryGB * 0.625) }; // 62.5%
-	int defaultLinkJobs{ static_cast<int>(std::max(1L, defaultLinkMemoryGB / GB_PER_LINK_JOB)) };
+	constexpr long GiBPerLinkJob = 9;
+	long defaultLinkMemoryGiB{ static_cast<long>(totalMemoryGiB * 0.625) }; // 62.5%
+	int defaultLinkJobs{ static_cast<int>(std::max(1L, defaultLinkMemoryGiB / GiBPerLinkJob)) };
 
 	// Cap at a reasonable maximum to prevent runaway values on very large systems
 	return std::min(defaultLinkJobs, 10);
@@ -272,11 +272,11 @@ int SCpuInfo::GetDefaultLinkJobsConservative() const
 //////////////////////////////////////////////////////////////////////////
 int SCpuInfo::GetMaxLinkJobs() const
 {
-	// Maximum for Release builds: Use ~94% of RAM for linking (4GB per job)
+	// Maximum for Release builds: Use ~94% of RAM for linking (4 GiB per job)
 	// This leaves ~6% free as minimum headroom
-	constexpr long GB_PER_LINK_JOB = 4;
-	long maxLinkMemoryGB{ static_cast<long>(totalMemoryGB * 0.9375) }; // 93.75%
-	int maxLinkJobs{ static_cast<int>(std::max(1L, maxLinkMemoryGB / GB_PER_LINK_JOB)) };
+	constexpr long GiBPerLinkJob = 4;
+	long maxLinkMemoryGiB{ static_cast<long>(totalMemoryGiB * 0.9375) }; // 93.75%
+	int maxLinkJobs{ static_cast<int>(std::max(1L, maxLinkMemoryGiB / GiBPerLinkJob)) };
 
 	// Cap at a reasonable maximum to prevent runaway values on very large systems
 	return std::min(maxLinkJobs, 30);
@@ -285,11 +285,11 @@ int SCpuInfo::GetMaxLinkJobs() const
 //////////////////////////////////////////////////////////////////////////
 int SCpuInfo::GetMaxLinkJobsConservative() const
 {
-	// Maximum for Debug/RelWithDebInfo builds: Use ~94% of RAM for linking (9GB per job)
+	// Maximum for Debug/RelWithDebInfo builds: Use ~94% of RAM for linking (9 GiB per job)
 	// Conservative estimate for builds with debug info and less optimization
-	constexpr long GB_PER_LINK_JOB = 9;
-	long maxLinkMemoryGB{ static_cast<long>(totalMemoryGB * 0.9375) }; // 93.75%
-	int maxLinkJobs{ static_cast<int>(std::max(1L, maxLinkMemoryGB / GB_PER_LINK_JOB)) };
+	constexpr long GiBPerLinkJob = 9;
+	long maxLinkMemoryGiB{ static_cast<long>(totalMemoryGiB * 0.9375) }; // 93.75%
+	int maxLinkJobs{ static_cast<int>(std::max(1L, maxLinkMemoryGiB / GiBPerLinkJob)) };
 
 	// Cap at a reasonable maximum to prevent runaway values on very large systems
 	return std::min(maxLinkJobs, 15);
