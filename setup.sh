@@ -631,12 +631,12 @@ detect_compilers() {
         log_error "No C++23 compatible compilers found!"
         echo ""
         echo "Compilatron requires C++23 support. Please install:"
-        echo "  - GCC 13+ (g++-13 or newer)"
-        echo "  - Clang 15+ (clang++-15 or newer)"
+        echo "  - GCC 14+ (g++-14 or newer)"
+        echo "  - Clang 19+ (clang++-19 or newer)"
         echo ""
-        echo "On Ubuntu 22.04:"
-        echo "  sudo apt install gcc-13 g++-13"
-        echo "  sudo apt install clang-15 clang++-15"
+        echo "On Ubuntu 24.04:"
+        echo "  sudo apt install gcc-14 g++-14"
+        echo "  sudo apt install clang-19 clang++-19"
     else
         log_success "Found ${COMPILERS// /,} with C++23 support"
     fi
@@ -704,7 +704,7 @@ resolve_compiler_path() {
         local version
         version=$("$resolved" --version 2>/dev/null | head -1 || echo "Unknown version")
         log_error "Compiler does not support C++23: $resolved ($version)"
-        log_error "Compilatron requires C++23. Please use GCC 13+ or Clang 15+"
+        log_error "Compilatron requires C++23. Please use GCC 14+ or Clang 19+"
         exit 1
     fi
 

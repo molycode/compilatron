@@ -7,6 +7,7 @@
 #include <sstream>
 #include <filesystem>
 #include <fstream>
+#include <ranges>
 
 namespace Ctrn
 {
@@ -25,6 +26,26 @@ std::string BuildClangPath(std::string_view dependenciesDir)
 	}
 
 	return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void AppendSemicolonTokens(std::vector<std::string>& out, std::string_view list)
+{
+	for (auto const part : list | std::views::split(';'))
+	{
+		std::string_view const token{ part };
+
+		if (!token.empty())
+		{
+			out.emplace_back(token);
+		}
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+std::string JoinSemicolons(std::vector<std::string> const& parts)
+{
+	return parts | std::views::join_with(';') | std::ranges::to<std::string>();
 }
 } // namespace
 
@@ -232,41 +253,12 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 
 		if (!config.customTargets.value.empty())
 		{
-			std::string customList{ config.customTargets.value };
-			size_t pos{ 0 };
-
-			while ((pos = customList.find(';')) != std::string::npos)
-			{
-				std::string target{ customList.substr(0, pos) };
-
-				if (!target.empty())
-				{
-					targets.push_back(target);
-				}
-
-				customList.erase(0, pos + 1);
-			}
-
-			if (!customList.empty())
-			{
-				targets.push_back(customList);
-			}
+			AppendSemicolonTokens(targets, config.customTargets.value);
 		}
 
 		if (!targets.empty())
 		{
-			std::string targetList{};
-
-			for (size_t i = 0; i < targets.size(); ++i)
-			{
-				if (i > 0)
-				{
-					targetList += ";";
-				}
-
-				targetList += targets[i];
-			}
-			cmd << " -DLLVM_TARGETS_TO_BUILD=\"" << targetList << "\"";
+			cmd << " -DLLVM_TARGETS_TO_BUILD=\"" << JoinSemicolons(targets) << "\"";
 		}
 
 		// LLVM projects and runtimes (separated according to LLVM build system requirements)
@@ -347,57 +339,17 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 
 		if (!config.customProjects.value.empty())
 		{
-			std::string customList{ config.customProjects.value };
-			size_t pos{ 0 };
-
-			while ((pos = customList.find(';')) != std::string::npos)
-			{
-				std::string project{ customList.substr(0, pos) };
-
-				if (!project.empty())
-				{
-					projects.push_back(project);
-				}
-
-				customList.erase(0, pos + 1);
-			}
-
-			if (!customList.empty())
-			{
-				projects.push_back(customList);
-			}
+			AppendSemicolonTokens(projects, config.customProjects.value);
 		}
 
 		if (!projects.empty())
 		{
-			std::string projectList{};
-
-			for (size_t i = 0; i < projects.size(); ++i)
-			{
-				if (i > 0)
-				{
-					projectList += ";";
-				}
-
-				projectList += projects[i];
-			}
-			cmd << " -DLLVM_ENABLE_PROJECTS=\"" << projectList << "\"";
+			cmd << " -DLLVM_ENABLE_PROJECTS=\"" << JoinSemicolons(projects) << "\"";
 		}
 
 		if (!runtimes.empty())
 		{
-			std::string runtimeList{};
-
-			for (size_t i = 0; i < runtimes.size(); ++i)
-			{
-				if (i > 0)
-				{
-					runtimeList += ";";
-				}
-
-				runtimeList += runtimes[i];
-			}
-			cmd << " -DLLVM_ENABLE_RUNTIMES=\"" << runtimeList << "\"";
+			cmd << " -DLLVM_ENABLE_RUNTIMES=\"" << JoinSemicolons(runtimes) << "\"";
 		}
 
 		if (config.generator == ECMakeGenerator::Ninja)

@@ -23,7 +23,7 @@ A GUI application for building GCC and Clang compilers from source. Compilatron 
 ## Requirements
 
 - Linux (x86_64 or ARM64)
-- C++23-capable compiler (GCC 13+ or Clang 15+)
+- C++23-capable compiler (GCC 14+ or Clang 19+)
 - CMake 4.3.0+
 - OpenGL and X11 development headers (GLFW is vendored and built automatically)
 - 10+ GiB free disk space for compiler sources and build artifacts

@@ -23,11 +23,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "[Cc]lang")
 			"Tip: use CTRN_CLANG_PATH to point to a newer Clang installation.")
 	endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")
+	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "14")
 		message(FATAL_ERROR
 			"GCC ${CMAKE_CXX_COMPILER_VERSION} is too old.\n"
-			"Compilatron requires GCC 13 or newer.\n"
-			"Reason: std::format is not available before GCC 13.\n"
+			"Compilatron requires GCC 14 or newer.\n"
+			"Reason: std::ranges::to and std::views::join_with require libstdc++ 14.\n"
 			"Tip: use CTRN_GCC_PATH to point to a newer GCC installation.")
 	endif()
 endif()
