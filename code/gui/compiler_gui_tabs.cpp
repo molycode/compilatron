@@ -34,7 +34,9 @@ SCompilerBuildConfig CCompilerGUI::BuildConfigFromTab(SCompilerTab const& tab) c
 {
 	SCompilerBuildConfig config;
 	config.id = tab.id;
-	config.folderName = tab.folderName.empty() ? tab.name : tab.folderName;
+	// Use the same derivation as validation so the path that gets safety-validated
+	// (system-dir / self-overwrite checks) matches the path actually built/installed to.
+	config.folderName = tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName;
 	config.sourcesDir = g_dataDir + "/sources/" + config.folderName;
 	config.buildDir = g_dataDir + "/build_compilers/" + config.folderName;
 	config.dependenciesDir = g_dataDir + "/dependencies";
@@ -295,7 +297,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	if (isSystemInstall)
 	{
 		std::string folderName{ tab.folderName.empty() ?
-			GetFolderNameFromCompilerName(tab.name) : tab.folderName };
+			FolderNameFromCompilerName(tab.name) : tab.folderName };
 		std::string plannedPath{ GetResolvedInstallPath() + "/" + folderName };
 		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 100, 100, 255));
 		ImGui::TextWrapped("WARNING: This would install to a system directory: %s", plannedPath.c_str());

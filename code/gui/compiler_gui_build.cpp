@@ -121,7 +121,7 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 		}
 		else if (WouldInstallToSystemDirectory(tab))
 		{
-			std::string folderName{ tab.folderName.empty() ? GetFolderNameFromCompilerName(tab.name) : tab.folderName };
+			std::string folderName{ tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName };
 			std::string plannedPath{ GetResolvedInstallPath() + "/" + folderName };
 			gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': would install to system directory '{}'", tab.name, plannedPath);
 		}
@@ -427,7 +427,7 @@ void CCompilerGUI::RenderProgressBarWithStatus(CCompilerUnit& unit)
 
 	if (ImGui::SmallButton(buttonLabel.c_str()))
 	{
-		std::string folderName{ unit.GetFolderName().empty() ? GetFolderNameFromCompilerName(unit.GetName()) : unit.GetFolderName() };
+		std::string folderName{ unit.GetFolderName().empty() ? FolderNameFromCompilerName(unit.GetName()) : unit.GetFolderName() };
 		std::string folderPath{ GetResolvedInstallPath() + "/" + folderName };
 		auto const openResult = OpenFolder(folderPath);
 

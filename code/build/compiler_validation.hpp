@@ -23,4 +23,9 @@ std::string GetValidationErrorMessage(ECompilerValidationResult result, std::str
 
 // Returns true if the directory is a system-wide path (e.g. /usr/bin, /opt, /snap).
 [[nodiscard]] bool IsSystemDirectory(std::string_view directory);
+
+// Derives the default install/sources/build folder name from a compiler display name
+// (lowercased, spaces replaced with underscores). The canonical rule shared by the GUI
+// (validation, tab config) so the validated path always matches the path actually built to.
+[[nodiscard]] std::string FolderNameFromCompilerName(std::string_view compilerName);
 } // namespace Ctrn

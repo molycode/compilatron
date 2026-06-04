@@ -97,7 +97,6 @@ private:
 	void RenderCompilerSelection();
 	void RenderCompilerSelectionNew();
 	[[nodiscard]] std::expected<void, std::string> OpenFolder(std::string_view path);
-	std::string GetFolderNameFromCompilerName(std::string_view compilerName) const;
 	std::string GetResolvedInstallPath() const;
 	void AddCompilerEntry(std::string_view compilerType);
 

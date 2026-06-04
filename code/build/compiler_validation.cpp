@@ -1,5 +1,7 @@
 #include "build/compiler_validation.hpp"
 #include "common/loggers.hpp"
+#include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
@@ -121,5 +123,14 @@ bool IsSystemDirectory(std::string_view directory)
 	}
 
 	return found;
+}
+
+//////////////////////////////////////////////////////////////////////////
+std::string FolderNameFromCompilerName(std::string_view compilerName)
+{
+	std::string result{ compilerName };
+	std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+	std::replace(result.begin(), result.end(), ' ', '_');
+	return result;
 }
 } // namespace Ctrn

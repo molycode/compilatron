@@ -100,7 +100,7 @@ std::string CCompilerGUI::GetActualCompilerForTab(SCompilerTab const& tab) const
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerGUI::WouldInstallToSystemDirectory(SCompilerTab const& tab) const
 {
-	std::string folderName{ tab.folderName.empty() ? GetFolderNameFromCompilerName(tab.name) : tab.folderName };
+	std::string folderName{ tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName };
 	std::string plannedInstallPath{ GetResolvedInstallPath() + "/" + folderName };
 
 	std::error_code ec;
@@ -160,15 +160,6 @@ std::string CCompilerGUI::GetMissingDependenciesMessage() const
 	}
 
 	return message;
-}
-
-//////////////////////////////////////////////////////////////////////////
-std::string CCompilerGUI::GetFolderNameFromCompilerName(std::string_view compilerName) const
-{
-	std::string result{compilerName};
-	std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-	std::replace(result.begin(), result.end(), ' ', '_');
-	return result;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -266,7 +257,7 @@ ECompilerValidationResult CCompilerGUI::ValidateCompilerForBuild(SCompilerTab co
 
 	if (!actualCompiler.empty())
 	{
-		std::string folderName{ tab.folderName.empty() ? GetFolderNameFromCompilerName(tab.name) : tab.folderName };
+		std::string folderName{ tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName };
 		std::string plannedInstallPath{ GetResolvedInstallPath() + "/" + folderName };
 		result = Ctrn::ValidateCompilerForBuild(actualCompiler, plannedInstallPath);
 	}
