@@ -45,9 +45,6 @@ public:
 
 	SBuildProgress GetProgress() const;
 
-	// Returns only the most recent lines (for live GUI display)
-	std::vector<std::string> GetOutputLines() const;
-
 	void BuildUsingCompilerUnits(std::vector<CCompilerUnit*> const& units);
 	void BuildCompilerUnitsSequentially(std::vector<CCompilerUnit*> const& units);
 
@@ -92,10 +89,6 @@ private:
 
 	mutable std::mutex m_progressMutex;
 	SBuildProgress m_progress;
-
-	mutable std::mutex m_outputMutex;
-	std::vector<std::string> m_outputLines;
-	static constexpr size_t MAX_OUTPUT_LINES = 500;
 
 	std::vector<CCompilerUnit*> m_units;
 

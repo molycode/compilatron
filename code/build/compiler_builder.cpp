@@ -60,11 +60,6 @@ void CCompilerBuilder::StartBuild(
 		m_shouldStop = false;
 		m_isBuilding = true;
 
-		{
-			std::lock_guard<std::mutex> lock(m_outputMutex);
-			m_outputLines.clear();
-		}
-
 		if (m_buildThread.joinable())
 		{
 			m_buildThread.join();
@@ -134,13 +129,6 @@ SBuildProgress CCompilerBuilder::GetProgress() const
 {
 	std::lock_guard<std::mutex> lock(m_progressMutex);
 	return m_progress;
-}
-
-//////////////////////////////////////////////////////////////////////////
-std::vector<std::string> CCompilerBuilder::GetOutputLines() const
-{
-	std::lock_guard<std::mutex> lock(m_outputMutex);
-	return m_outputLines;
 }
 
 //////////////////////////////////////////////////////////////////////////
