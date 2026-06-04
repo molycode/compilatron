@@ -428,7 +428,7 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 
 		cmd << " -DLLVM_ENABLE_RTTI=" << (config.enableRtti ? "ON" : "OFF");
 		cmd << " -DLLVM_ENABLE_EH=" << (config.enableEh ? "ON" : "OFF");
-		cmd << " -DLLVM_ENABLE_ZLIB=" << (config.enableZlib ? "ON" : "OFF");
+		cmd << " -DLLVM_ENABLE_ZLIB=" << (config.enableZlib ? "FORCE_ON" : "OFF");
 		cmd << " -DLLVM_ENABLE_FFI=" << (config.enableLibffi ? "ON" : "OFF");
 		cmd << " -DLLVM_ENABLE_TERMINFO=" << (config.enableTerminfo ? "ON" : "OFF");
 		cmd << " -DLLVM_ENABLE_LIBXML2=" << (config.enableLibxml2 ? "ON" : "OFF");
