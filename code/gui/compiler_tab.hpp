@@ -21,6 +21,7 @@ struct SCompilerTab final
 	bool keepSources{ true };
 	int numJobs{ 0 };         // 0 = use default based on CPU
 	std::string hostCompiler;  // Override compiler for this tab (empty = use global)
+	std::string sourceRef;     // Pinned git commit SHA (empty = build the selected branch/tag)
 
 	SClangSettings clangSettings;  // Used when kind == ECompilerKind::Clang
 	SGccSettings gccSettings;      // Used when kind == ECompilerKind::Gcc

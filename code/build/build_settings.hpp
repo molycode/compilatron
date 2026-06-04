@@ -28,6 +28,7 @@ struct SCompilerEntry final
 	SProperty<bool>        updateSources{    "updateSources",    "Update sources",     true    };
 	SProperty<std::string> hostCompiler{     "compilerOverride", "Host Compiler",      ""      };
 	SProperty<std::string> compilerType{     "compilerType",     "Compiler type",      ""      };
+	SProperty<std::string> sourceRef{        "sourceRef",        "Pinned commit",      ""      };
 
 	// Sub-settings — not part of Properties(); serialised separately via their own Properties()
 	SClangSettings clangSettings;
@@ -36,13 +37,13 @@ struct SCompilerEntry final
 	auto Properties()
 	{
 		return std::tie(name, folderName, numJobs, keepDependencies,
-		                keepSources, updateSources, hostCompiler, compilerType);
+		                keepSources, updateSources, hostCompiler, compilerType, sourceRef);
 	}
 
 	auto Properties() const
 	{
 		return std::tie(name, folderName, numJobs, keepDependencies,
-		                keepSources, updateSources, hostCompiler, compilerType);
+		                keepSources, updateSources, hostCompiler, compilerType, sourceRef);
 	}
 
 	bool operator==(SCompilerEntry const&) const = default;

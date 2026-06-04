@@ -29,6 +29,7 @@ struct SCompilerBuildConfig final
 	std::string sourcesDir;      // Full sources directory path
 	std::string dependenciesDir; // Dependencies bin directory for PATH
 	std::string hostCompiler;    // Override compiler for this specific build (empty = use global)
+	std::string sourceRef;       // Pinned git ref (commit SHA); empty = use the unit name as the ref
 	uint16_t id{ 0 };           // Tab ID
 };
 
@@ -121,6 +122,10 @@ public:
 protected:
 
 	std::string GetResolvedCompiler() const;
+
+	// The git ref to build from: the pinned commit SHA when set, otherwise the unit name.
+	std::string GetSourceRef() const;
+
 	void CheckAndCleanCompilerCache(std::string_view buildPath);
 
 	void SetStatus(ECompilerStatus status, std::string_view task = "");

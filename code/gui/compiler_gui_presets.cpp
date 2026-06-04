@@ -719,6 +719,7 @@ SBuildSettings CCompilerGUI::CreateBuildSettingsFromTabs() const
 			entry.keepDependencies = tab.keepDependencies;
 			entry.keepSources = tab.keepSources;
 			entry.hostCompiler = tab.hostCompiler;
+			entry.sourceRef = tab.sourceRef;
 			entry.compilerType = tab.kind == ECompilerKind::Gcc ? "gcc" : "clang";
 			entry.clangSettings = tab.clangSettings;
 			entry.gccSettings = tab.gccSettings;
@@ -748,6 +749,7 @@ void CCompilerGUI::CreateTabsFromBuildSettings(SBuildSettings const& settings)
 			tab.numJobs = entry.numJobs.value;
 			tab.keepDependencies = entry.keepDependencies.value;
 			tab.keepSources = entry.keepSources.value;
+			tab.sourceRef = entry.sourceRef.value;
 			tab.isOpen = true;
 
 			if (!entry.compilerType.value.empty())

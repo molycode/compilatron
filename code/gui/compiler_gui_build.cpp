@@ -229,6 +229,7 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 			entry.keepDependencies = tab.keepDependencies;
 			entry.keepSources = tab.keepSources;
 			entry.hostCompiler = tab.hostCompiler;
+			entry.sourceRef = tab.sourceRef;
 			entry.compilerType = tab.kind == ECompilerKind::Gcc ? "gcc" : "clang";
 			entry.clangSettings = tab.clangSettings;
 			entry.gccSettings = tab.gccSettings;

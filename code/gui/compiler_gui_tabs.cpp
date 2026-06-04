@@ -42,6 +42,7 @@ SCompilerBuildConfig CCompilerGUI::BuildConfigFromTab(SCompilerTab const& tab) c
 	config.dependenciesDir = g_dataDir + "/dependencies";
 	config.numJobs = tab.numJobs > 0 ? tab.numJobs : std::max(1u, std::thread::hardware_concurrency() / 2);
 	config.hostCompiler = tab.hostCompiler;
+	config.sourceRef = tab.sourceRef;
 
 	return config;
 }

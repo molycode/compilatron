@@ -8,6 +8,7 @@
 #include <tge/init/assert.hpp>
 #include <tge/logging/log_system.hpp>
 #include <nlohmann/json.hpp>
+#include <algorithm>
 #include <format>
 #include <chrono>
 #include <ctime>
@@ -35,6 +36,16 @@ static bool IsGitTag(std::string_view sourcesDir, std::string_view target)
 	std::string const git{ ResolveGit() };
 	std::string const cmd{ "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(git) + " show-ref --verify --quiet refs/tags/" + ShellQuote(target) + " 2>/dev/null" };
 	return CProcessExecutor::Execute(cmd).success;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// True when ref is a full 40-char hex commit SHA — the only ref form GitHub's fetch-by-SHA accepts
+static bool IsCommitSha(std::string_view ref)
+{
+	return ref.size() == 40 && std::ranges::all_of(ref, [](char c)
+	{
+		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+	});
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -360,6 +371,12 @@ std::string CCompilerUnit::GetResolvedCompiler() const
 }
 
 //////////////////////////////////////////////////////////////////////////
+std::string CCompilerUnit::GetSourceRef() const
+{
+	return m_buildConfig.sourceRef.empty() ? std::string{ GetName() } : m_buildConfig.sourceRef;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CCompilerUnit::CheckAndCleanCompilerCache(std::string_view buildPath)
 {
 	std::string currentCompilerPath{ GetResolvedCompiler() };
@@ -543,31 +560,40 @@ bool CCompilerUnit::DownloadSources()
 
 	namespace fs = std::filesystem;
 	std::string const sourcesDir{ GetSourcePath() };
-	std::string const targetBranch{ GetName() };
+	std::string const targetRef{ GetSourceRef() };
 	std::string const sourceUrl{ GetDefaultSourceUrl() };
+	std::string const git{ ShellQuote(ResolveGit()) };
+	bool const isSha{ IsCommitSha(targetRef) };
 	bool success{ false };
 
 	if (fs::exists(sourcesDir))
 	{
-		if (ExecuteGitFetchWithRetry(sourcesDir, targetBranch))
+		if (ExecuteGitFetchWithRetry(sourcesDir, targetRef))
 		{
-			bool const isTag{ IsGitTag(sourcesDir, targetBranch) };
+			std::string const inSources{ "cd " + ShellQuote(sourcesDir) + " && " + git + " " };
 			std::string checkoutCmd{};
 
-			if (isTag)
+			if (isSha)
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetBranch + "' is a tag, checking out tag...");
-				checkoutCmd = "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " checkout " + ShellQuote("tags/" + targetBranch);
+				// Fetch-by-SHA leaves the commit at FETCH_HEAD; detach-checkout it so no local
+				// branch is named after the SHA.
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetRef + "' is a commit, checking out detached...");
+				checkoutCmd = inSources + "checkout " + ShellQuote(targetRef);
+			}
+			else if (IsGitTag(sourcesDir, targetRef))
+			{
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetRef + "' is a tag, checking out tag...");
+				checkoutCmd = inSources + "checkout " + ShellQuote("tags/" + targetRef);
 			}
 			else
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetBranch + "' is a branch, updating branch...");
-				checkoutCmd = "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " checkout -B " + ShellQuote(targetBranch) + " FETCH_HEAD";
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Target '" + targetRef + "' is a branch, updating branch...");
+				checkoutCmd = inSources + "checkout -B " + ShellQuote(targetRef) + " FETCH_HEAD";
 			}
 
 			if (ExecuteCommand(checkoutCmd))
 			{
-				m_unitLog.Info(Tge::Logging::ETarget::Listeners, isTag ? "Checked out tag: " + targetBranch : "Updated to latest: " + targetBranch);
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Updated to: " + targetRef);
 				SetStatus(ECompilerStatus::Cloning, "Sources updated");
 				success = true;
 			}
@@ -580,48 +606,74 @@ bool CCompilerUnit::DownloadSources()
 	}
 	else
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cloning fresh repository for target: " + targetBranch);
+		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cloning fresh repository for target: " + targetRef);
 		fs::create_directories(fs::path(sourcesDir).parent_path());
 
-		std::string const shallowBranchCloneCmd{ ShellQuote(ResolveGit()) + " clone --branch " + ShellQuote(targetBranch) + " --depth 1 --progress " + ShellQuote(sourceUrl) + " " + ShellQuote(sourcesDir) + " 2>&1" };
-		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Attempting shallow clone for tag/recent branch: " + shallowBranchCloneCmd);
+		bool cloned{ false };
 
-		bool cloned{ ExecuteCommand(shallowBranchCloneCmd) };
-
-		if (!cloned)
+		if (isSha)
 		{
-			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Shallow clone with branch failed, trying shallow clone + fetch + checkout...");
-			std::string const defaultCloneCmd{ ShellQuote(ResolveGit()) + " clone --depth 1 --progress " + ShellQuote(sourceUrl) + " " + ShellQuote(sourcesDir) + " 2>&1" };
+			// A raw SHA cannot be cloned with --branch. Init an empty repo, fetch the exact commit
+			// shallowly, then detach-checkout it — relies on GitHub serving reachable commits by SHA.
+			std::string const inSources{ "cd " + ShellQuote(sourcesDir) + " && " + git + " " };
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Fetching pinned commit " + targetRef + " (shallow)...");
 
-			if (ExecuteCommand(defaultCloneCmd))
+			if (ExecuteCommand(git + " init " + ShellQuote(sourcesDir) + " 2>&1")
+			    && ExecuteCommand(inSources + "remote add origin " + ShellQuote(sourceUrl) + " 2>&1")
+			    && ExecuteCommand(inSources + "fetch --depth 1 --progress origin " + ShellQuote(targetRef) + " 2>&1")
+			    && ExecuteCommand(inSources + "checkout " + ShellQuote(targetRef) + " 2>&1"))
 			{
 				cloned = true;
-				std::string const fetchCmd{ "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " fetch --depth 1 origin " + ShellQuote(targetBranch) + ":" + ShellQuote(targetBranch) + " 2>&1" };
-				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Fetching target branch: " + fetchCmd);
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Checked out pinned commit: " + targetRef);
+			}
+			else
+			{
+				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to fetch pinned commit " + targetRef);
+				ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source download failed");
+			}
+		}
+		else
+		{
+			std::string const shallowBranchCloneCmd{ git + " clone --branch " + ShellQuote(targetRef) + " --depth 1 --progress " + ShellQuote(sourceUrl) + " " + ShellQuote(sourcesDir) + " 2>&1" };
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Attempting shallow clone for tag/recent branch: " + shallowBranchCloneCmd);
 
-				if (ExecuteCommand(fetchCmd))
+			cloned = ExecuteCommand(shallowBranchCloneCmd);
+
+			if (!cloned)
+			{
+				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Shallow clone with branch failed, trying shallow clone + fetch + checkout...");
+				std::string const defaultCloneCmd{ git + " clone --depth 1 --progress " + ShellQuote(sourceUrl) + " " + ShellQuote(sourcesDir) + " 2>&1" };
+
+				if (ExecuteCommand(defaultCloneCmd))
 				{
-					std::string const checkoutCmd{ "cd " + ShellQuote(sourcesDir) + " && " + ShellQuote(ResolveGit()) + " checkout " + ShellQuote(targetBranch) + " 2>&1" };
-					m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Checking out target branch: " + checkoutCmd);
+					cloned = true;
+					std::string const fetchCmd{ "cd " + ShellQuote(sourcesDir) + " && " + git + " fetch --depth 1 origin " + ShellQuote(targetRef) + ":" + ShellQuote(targetRef) + " 2>&1" };
+					m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Fetching target branch: " + fetchCmd);
 
-					if (ExecuteCommand(checkoutCmd))
+					if (ExecuteCommand(fetchCmd))
 					{
-						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Successfully fetched and checked out: " + targetBranch);
+						std::string const checkoutCmd{ "cd " + ShellQuote(sourcesDir) + " && " + git + " checkout " + ShellQuote(targetRef) + " 2>&1" };
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Checking out target branch: " + checkoutCmd);
+
+						if (ExecuteCommand(checkoutCmd))
+						{
+							m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Successfully fetched and checked out: " + targetRef);
+						}
+						else
+						{
+							m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Could not checkout specific branch, using default branch from shallow clone");
+						}
 					}
 					else
 					{
-						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Could not checkout specific branch, using default branch from shallow clone");
+						m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Could not fetch specific branch, using default branch from shallow clone");
 					}
 				}
 				else
 				{
-					m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Could not fetch specific branch, using default branch from shallow clone");
+					m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to clone sources");
+					ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source download failed");
 				}
-			}
-			else
-			{
-				m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to clone sources");
-				ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source download failed");
 			}
 		}
 
@@ -904,7 +956,7 @@ void CCompilerUnit::WriteBuildManifest(std::filesystem::path const& installPath)
 	// Neutral filename and contents — describes the compiler, never the build tool — so the
 	// manifest stays clean when the install is bootstrapped or copied to the build farm.
 	nlohmann::json manifest;
-	manifest["ref"]        = std::string{ GetName() };
+	manifest["ref"]        = GetSourceRef();
 	manifest["commit"]     = commit;
 
 	if (!describe.empty())
