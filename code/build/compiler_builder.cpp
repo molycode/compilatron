@@ -4,7 +4,6 @@
 #include "common/process_executor.hpp"
 #include "dependency/dependency_manager.hpp"
 #include <tge/init/assert.hpp>
-#include <fstream>
 #include <format>
 #include <optional>
 #include <algorithm>
@@ -305,24 +304,6 @@ bool CCompilerBuilder::ProvisionMissingDependencies()
 	g_dependencyManager.UpdateEnvironmentPaths();
 
 	return success;
-}
-
-//////////////////////////////////////////////////////////////////////////
-std::string CCompilerBuilder::GetDistroId() const
-{
-	std::ifstream file("/etc/os-release");
-	std::string line{};
-	std::string distroId{};
-
-	while (std::getline(file, line))
-	{
-		if (line.find("ID=") == 0)
-		{
-			distroId = line.substr(3);
-		}
-	}
-
-	return distroId.empty() ? "unknown" : distroId;
 }
 
 //////////////////////////////////////////////////////////////////////////

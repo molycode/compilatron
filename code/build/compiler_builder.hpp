@@ -80,8 +80,6 @@ private:
 	std::string m_sourceDir;
 	std::string m_installPrefix;
 	int m_numJobs{ std::max(1, static_cast<int>(std::thread::hardware_concurrency() / 2)) };
-
-	std::string GetDistroId() const;
 };
 
 } // namespace Ctrn
