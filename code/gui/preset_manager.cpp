@@ -1,6 +1,7 @@
 #include "gui/preset_manager.hpp"
 #include "gui/compiler_gui.hpp"
 #include "build/property_io.hpp"
+#include "common/common.hpp"
 #include "common/loggers.hpp"
 
 #include <nlohmann/json.hpp>
@@ -229,6 +230,24 @@ bool CPresetManager::SavePreset(std::string_view name, std::string_view descript
 	}
 
 	return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CPresetManager::SaveActivePreset()
+{
+	std::string const name{ g_stateManager.GetActivePreset() };
+	bool saved{ false };
+
+	if (name.empty())
+	{
+		gLog.Warning(Tge::Logging::ETarget::File, "PresetManager: SaveActivePreset: no active preset");
+	}
+	else
+	{
+		saved = SavePreset(name, GetDescription(name), g_buildSettings);
+	}
+
+	return saved;
 }
 
 //////////////////////////////////////////////////////////////////////////

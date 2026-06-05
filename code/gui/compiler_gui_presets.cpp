@@ -24,7 +24,7 @@ namespace Ctrn
 //////////////////////////////////////////////////////////////////////////
 void CCompilerGUI::RefreshPresetNames()
 {
-	m_availablePresets = m_presetManager.GetPresetNames();
+	m_availablePresets = g_presetManager.GetPresetNames();
 	m_presetDescriptions.clear();
 
 	for (std::string const& name : m_availablePresets)
@@ -36,21 +36,10 @@ void CCompilerGUI::RefreshPresetNames()
 //////////////////////////////////////////////////////////////////////////
 void CCompilerGUI::SaveActivePreset()
 {
+	// Gather both authoritative slices into g_buildSettings, then defer to the single global saver.
+	SyncBuildSettingsFromTabs();
 	g_dependencyWindow.SaveLocationSelectionsToPresets();
-	SBuildSettings settings{ CreateBuildSettingsFromTabs() };
-
-	std::string description;
-	auto const descIt{ m_presetDescriptions.find(m_currentPresetName) };
-
-	if (descIt != m_presetDescriptions.end())
-	{
-		description = descIt->second;
-	}
-
-	if (!m_presetManager.SavePreset(m_currentPresetName, description, settings))
-	{
-		gLog.Warning(Tge::Logging::ETarget::File, "SaveActivePreset: failed to save '{}'", m_currentPresetName);
-	}
+	(void)g_presetManager.SaveActivePreset();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -169,7 +158,7 @@ void CCompilerGUI::RenderPresetControls()
 
 		if (ImGui::Button("Delete"))
 		{
-			if (m_presetManager.DeletePreset(m_currentPresetName))
+			if (g_presetManager.DeletePreset(m_currentPresetName))
 			{
 				gLog.Info(Tge::Logging::ETarget::Listeners, "Preset deleted: {}", m_currentPresetName);
 				m_currentPresetName.clear();
@@ -179,7 +168,7 @@ void CCompilerGUI::RenderPresetControls()
 				{
 					SBuildSettings defaults;
 
-					if (!m_presetManager.SavePreset("Default", "", defaults))
+					if (!g_presetManager.SavePreset("Default", "", defaults))
 					{
 						gLog.Warning(Tge::Logging::ETarget::File, "Delete: failed to create Default preset");
 					}
@@ -509,14 +498,12 @@ void CCompilerGUI::SelectPreset(std::string_view name)
 {
 	SBuildSettings loadedSettings;
 
-	if (m_presetManager.LoadPreset(name, loadedSettings))
+	if (g_presetManager.LoadPreset(name, loadedSettings))
 	{
 		m_currentPresetName = name;
 		g_stateManager.SetActivePreset(name);
-		g_buildSettings.installDirectory = loadedSettings.installDirectory;
-		g_buildSettings.globalHostCompiler = loadedSettings.globalHostCompiler;
-		g_buildSettings.dependencyLocationSelections = loadedSettings.dependencyLocationSelections;
-		CreateTabsFromBuildSettings(loadedSettings);
+		g_buildSettings = loadedSettings;
+		CreateTabsFromBuildSettings(g_buildSettings);
 		g_dependencyWindow.LoadLocationSelectionsFromPresets();
 	}
 	else
@@ -631,7 +618,7 @@ void CCompilerGUI::RenderPresetSaveDialog()
 			{
 				std::string const newName{ m_presetNameBuffer };
 
-				if (m_presetManager.RenamePreset(m_currentPresetName, newName))
+				if (g_presetManager.RenamePreset(m_currentPresetName, newName))
 				{
 					m_currentPresetName = newName;
 					g_stateManager.SetActivePreset(newName);
@@ -686,8 +673,8 @@ void CCompilerGUI::SaveToPreset(std::string_view presetName, std::string_view de
 		}
 	}
 
-	SBuildSettings tabBasedSettings = CreateBuildSettingsFromTabs();
-	bool success{ m_presetManager.SavePreset(presetName, description, tabBasedSettings) };
+	SyncBuildSettingsFromTabs();
+	bool success{ g_presetManager.SavePreset(presetName, description, g_buildSettings) };
 
 	if (success)
 	{
@@ -703,10 +690,9 @@ void CCompilerGUI::SaveToPreset(std::string_view presetName, std::string_view de
 }
 
 //////////////////////////////////////////////////////////////////////////
-SBuildSettings CCompilerGUI::CreateBuildSettingsFromTabs() const
+void CCompilerGUI::SyncBuildSettingsFromTabs()
 {
-	SBuildSettings settings = g_buildSettings;
-	settings.compilerEntries.clear();
+	g_buildSettings.compilerEntries.clear();
 
 	for (auto const& tab : m_compilerTabs)
 	{
@@ -723,12 +709,9 @@ SBuildSettings CCompilerGUI::CreateBuildSettingsFromTabs() const
 			entry.compilerType = tab.kind == ECompilerKind::Gcc ? "gcc" : "clang";
 			entry.clangSettings = tab.clangSettings;
 			entry.gccSettings = tab.gccSettings;
-			settings.compilerEntries.push_back(std::move(entry));
-
+			g_buildSettings.compilerEntries.push_back(std::move(entry));
 		}
 	}
-
-	return settings;
 }
 
 //////////////////////////////////////////////////////////////////////////

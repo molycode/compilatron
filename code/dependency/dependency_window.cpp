@@ -2,7 +2,6 @@
 #include "build/build_settings.hpp"
 #include "common/common.hpp"
 #include "common/loggers.hpp"
-#include "gui/preset_manager.hpp"
 #include <imgui.h>
 #include <filesystem>
 #include <format>
@@ -118,21 +117,4 @@ void CDependencyWindow::LoadDialogState()
 	}
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CDependencyWindow::SaveActivePreset()
-{
-	SaveLocationSelectionsToPresets();
-
-	std::string const name{ g_stateManager.GetActivePreset() };
-
-	if (!name.empty())
-	{
-		std::string const desc{ g_presetManager.GetDescription(name) };
-
-		if (!g_presetManager.SavePreset(name, desc, g_buildSettings))
-		{
-			gDepLog.Warning(Tge::Logging::ETarget::File, "DependencyTab: Failed to save active preset '{}'", name);
-		}
-	}
-}
 } // namespace Ctrn

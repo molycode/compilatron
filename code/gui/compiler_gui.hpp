@@ -123,7 +123,7 @@ private:
 	void ShowDuplicateDialog();
 	void ShowRenameDialog();
 
-	SBuildSettings CreateBuildSettingsFromTabs() const;
+	void SyncBuildSettingsFromTabs();
 	void CreateTabsFromBuildSettings(SBuildSettings const& settings);
 
 	std::uintmax_t m_sourcesSize{ 0 };
@@ -159,7 +159,6 @@ private:
 	std::unordered_map<std::string, std::string> m_presetDescriptions;
 	CVersionSelectorDialog m_versionSelectorDialog;
 	CVersionManager m_versionManager;
-	CPresetManager m_presetManager;
 
 	std::atomic<float> m_buildProgress{ 0.0f };
 	float m_logPanelHeight{ 200.0f };

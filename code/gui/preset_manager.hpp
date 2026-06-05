@@ -15,6 +15,11 @@ public:
 	CPresetManager() = default;
 
 	[[nodiscard]] bool SavePreset(std::string_view name, std::string_view description, SBuildSettings& settings);
+
+	// The single autosave path: serializes g_buildSettings to the currently active preset.
+	// g_buildSettings is the authoritative state — callers keep it current before invoking this.
+	[[nodiscard]] bool SaveActivePreset();
+
 	[[nodiscard]] bool LoadPreset(std::string_view name, SBuildSettings& settings);
 	[[nodiscard]] bool DeletePreset(std::string_view name);
 	[[nodiscard]] bool RenamePreset(std::string_view oldName, std::string_view newName);

@@ -97,8 +97,8 @@ void CCompilerGUI::StartBuild()
 			}
 		};
 
-		SBuildSettings tabBasedSettings = CreateBuildSettingsFromTabs();
-		m_compilerBuilder->StartBuild(std::move(units), tabBasedSettings, progressCb, completionCb);
+		SyncBuildSettingsFromTabs();
+		m_compilerBuilder->StartBuild(std::move(units), g_buildSettings, progressCb, completionCb);
 	}
 }
 

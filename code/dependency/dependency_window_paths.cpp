@@ -1,5 +1,6 @@
 #include "dependency/dependency_window.hpp"
 #include "dependency/dependency_manager.hpp"
+#include "gui/preset_manager.hpp"
 #include "common/common.hpp"
 #include "common/loggers.hpp"
 #include "common/process_executor.hpp"
@@ -48,7 +49,8 @@ void CDependencyWindow::HandlePathProcessingResults()
 				if (success)
 				{
 					m_columnWidthsDirty = true;
-					SaveActivePreset();
+					SaveLocationSelectionsToPresets();
+					(void)g_presetManager.SaveActivePreset();
 					gDepLog.Info(Tge::Logging::ETarget::Listeners, "Registered {} executable: {} (v{})", result.identifier, result.finalPath, version);
 				}
 				else
@@ -70,7 +72,8 @@ void CDependencyWindow::HandlePathProcessingResults()
 					if (success)
 					{
 						m_columnWidthsDirty = true;
-						SaveActivePreset();
+						SaveLocationSelectionsToPresets();
+						(void)g_presetManager.SaveActivePreset();
 						gDepLog.Info(Tge::Logging::ETarget::Listeners, "Registered {} executable: {} (v{})", result.identifier, exe.path, exe.version);
 					}
 					else

@@ -2,6 +2,7 @@
 #include "dependency/dependency_checker.hpp"
 #include "gui/log_panel.hpp"
 #include "gui/status_icons.hpp"
+#include "gui/preset_manager.hpp"
 #include "common/common.hpp"
 #include "common/loggers.hpp"
 #include <imgui.h>
@@ -263,7 +264,8 @@ void CDependencyWindow::RenderDepsTable(std::vector<SAdvancedDependencyInfo*> co
 							if (ImGui::Selectable(items[i].c_str(), selected))
 							{
 								dep->selectedLocation = &dep->foundLocations[i];
-								SaveActivePreset();
+								SaveLocationSelectionsToPresets();
+								(void)g_presetManager.SaveActivePreset();
 							}
 
 							if (selected)

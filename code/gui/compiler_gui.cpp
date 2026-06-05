@@ -53,15 +53,13 @@ void CCompilerGUI::Initialize()
 	{
 		SBuildSettings loadedSettings;
 
-		if (!m_presetManager.LoadPreset(m_currentPresetName, loadedSettings))
+		if (!g_presetManager.LoadPreset(m_currentPresetName, loadedSettings))
 		{
 			gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Preset '{}' unreadable — starting with defaults", m_currentPresetName);
 		}
 
-		g_buildSettings.installDirectory = loadedSettings.installDirectory;
-		g_buildSettings.globalHostCompiler = loadedSettings.globalHostCompiler;
-		g_buildSettings.dependencyLocationSelections = loadedSettings.dependencyLocationSelections;
-		CreateTabsFromBuildSettings(loadedSettings);
+		g_buildSettings = loadedSettings;
+		CreateTabsFromBuildSettings(g_buildSettings);
 	}
 
 	// Raw format: Console colors carry level signal; timestamp + message is sufficient
@@ -276,11 +274,20 @@ void CCompilerGUI::RenderMainPanel()
 			}
 		}
 
+		size_t const numTabsBefore{ m_compilerTabs.size() };
+
 		m_compilerTabs.erase(
 			std::remove_if(m_compilerTabs.begin(), m_compilerTabs.end(),
 				[](SCompilerTab const& tab) { return !tab.isOpen; }),
 			m_compilerTabs.end()
 		);
+
+		if (m_compilerTabs.size() != numTabsBefore)
+		{
+			// A tab was removed — keep g_buildSettings (the authoritative state) in step so a later
+			// dependency save can't resurrect the removed compiler.
+			SyncBuildSettingsFromTabs();
+		}
 	}
 	else
 	{

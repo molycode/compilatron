@@ -142,7 +142,6 @@ private:
 	// Dialog state persistence - internal only
 	void SaveDialogState();
 	void LoadDialogState();
-	void SaveActivePreset();
 
 private:
 	CLogSaver m_logSaver;
