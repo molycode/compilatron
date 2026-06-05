@@ -20,6 +20,7 @@
 #include <memory>
 #include <filesystem>
 #include <string>
+#include <cstdlib>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -28,6 +29,24 @@
 static void GlfwErrorCallback(int error, char const* description)
 {
 	// No console output - GUI only
+}
+
+// Under WSLg, Mesa's GLX/XWayland path defaults to software rendering (llvmpipe) even
+// when the GPU is reachable, leaving the whole UI sluggish. The WSL GPU paravirt device
+// (/dev/dxg) is present only under WSL with GPU passthrough, and signals that Mesa's
+// d3d12 gallium driver can drive the real GPU — so select it there unless the user has
+// pinned a driver. A no-op on native Linux (no /dev/dxg). Must run before the GL context
+// is created: Mesa reads GALLIUM_DRIVER when the driver loads at window/context creation.
+static void SelectHardwareGlDriver()
+{
+#if !defined(_WIN32)
+	std::error_code ec;
+
+	if (getenv("GALLIUM_DRIVER") == nullptr && std::filesystem::exists("/dev/dxg", ec))
+	{
+		setenv("GALLIUM_DRIVER", "d3d12", 1);
+	}
+#endif // !_WIN32
 }
 
 void Ctrn::RequestRedraw()
@@ -103,6 +122,9 @@ int main(int argc, char* argv[])
 	}
 
 	bool hasMissingDeps{ !depChecker.CanRunGui() };
+
+	// Pick the GPU-backed GL driver on WSL before any GL context is created.
+	SelectHardwareGlDriver();
 
 	// Initialize GLFW regardless - we need it for the dependency dialog too
 	glfwSetErrorCallback(GlfwErrorCallback);
@@ -193,6 +215,9 @@ int main(int argc, char* argv[])
 
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glslVersion);
+
+	char const* glRenderer{ reinterpret_cast<char const*>(glGetString(GL_RENDERER)) };
+	Ctrn::gLog.Info(Tge::Logging::ETarget::File, "GLInfo: renderer='{}'", glRenderer != nullptr ? glRenderer : "unknown");
 
 	std::unique_ptr<Ctrn::CSimpleDependencyDialog> depDialog;
 
