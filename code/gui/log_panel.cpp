@@ -148,6 +148,20 @@ void RenderLogPanel(std::string_view childId,
 		ImGui::Dummy(ImVec2(cache.width, 0.0f));
 		RenderLogEntries(entries);
 
+		// SetScrollHereY(1.0f) pins the last line flush to the child's bottom edge — which is
+		// behind the horizontal scrollbar. When that scrollbar is present, reserve its height
+		// below the last line so the line lands flush on top of it: no clip, no blank gap. The
+		// item spacing ImGui inserts before this dummy already counts toward that reserved height.
+		if (ImGui::GetScrollMaxX() > 0.0f)
+		{
+			float const reserve{ ImGui::GetStyle().ScrollbarSize - ImGui::GetStyle().ItemSpacing.y };
+
+			if (reserve > 0.0f)
+			{
+				ImGui::Dummy(ImVec2(0.0f, reserve));
+			}
+		}
+
 		if (wasAtBottom && !scrolledUp)
 		{
 			ImGui::SetScrollHereY(1.0f);
