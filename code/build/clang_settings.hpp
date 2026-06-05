@@ -66,6 +66,7 @@ struct SClangSettings final
 	SProperty<int>           numNinjaLinkJobs{       "clang_ninjaLinkJobs",          "Ninja link jobs",      0                           };
 	SProperty<bool>          buildWithInstallRpath{  "clang_buildWithInstallRpath",  "Build with install RPATH", false                   };
 	SProperty<bool>          writeRpathConfig{       "clang_writeRpathConfig",       "Runtime rpath config", false                       };
+	SProperty<std::string>   vendor{                 "clang_vendor",                 "Vendor",               ""                          };
 	SProperty<std::string>   additionalConfigureFlags{ "clang_additionalConfigureFlags", "Extra CMake flags", ""                         };
 
 	auto Properties()
@@ -80,7 +81,7 @@ struct SClangSettings final
 		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
 		                installUtils, ltoMode, linker, optimizedTablegen,
 		                defaultCxxStdlib, defaultRtlib, defaultUnwindlib,
-		                generator, numNinjaLinkJobs, buildWithInstallRpath, writeRpathConfig, additionalConfigureFlags);
+		                generator, numNinjaLinkJobs, buildWithInstallRpath, writeRpathConfig, vendor, additionalConfigureFlags);
 	}
 
 	auto Properties() const
@@ -95,7 +96,7 @@ struct SClangSettings final
 		                enableTerminfo, enableLibxml2, enableAssertions, buildLlvmDylib, linkLlvmDylib,
 		                installUtils, ltoMode, linker, optimizedTablegen,
 		                defaultCxxStdlib, defaultRtlib, defaultUnwindlib,
-		                generator, numNinjaLinkJobs, buildWithInstallRpath, writeRpathConfig, additionalConfigureFlags);
+		                generator, numNinjaLinkJobs, buildWithInstallRpath, writeRpathConfig, vendor, additionalConfigureFlags);
 	}
 
 	void ResetToDefaults()

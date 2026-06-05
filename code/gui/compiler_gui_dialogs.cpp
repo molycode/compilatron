@@ -1919,10 +1919,28 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					ImGui::EndTooltip();
 				}
 
+				ImGui::Text("%s:", clang.vendor.uiName.data());
+				ImGui::SetNextItemWidth(400.0f);
+				char vendorBuffer[256];
+				size_t copyLen{ std::min(clang.vendor.value.length(), sizeof(vendorBuffer) - 1) };
+				clang.vendor.value.copy(vendorBuffer, copyLen);
+				vendorBuffer[copyLen] = '\0';
+
+				if (ImGui::InputText("##Vendor", vendorBuffer, sizeof(vendorBuffer)))
+				{
+					clang.vendor = vendorBuffer;
+					anyChanged = true;
+				}
+
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip("-DCLANG_VENDOR: provenance prefix shown before the version in 'clang --version'\n(e.g. a farm/baseline tag). Counterpart to GCC's package version.\nLeave empty for the bare 'clang version ...' default.");
+				}
+
 				ImGui::Text("%s:", clang.customCFlags.uiName.data());
 				ImGui::SetNextItemWidth(400.0f);
 				char customCFlagsBuffer[512];
-				size_t copyLen{ std::min(clang.customCFlags.value.length(), sizeof(customCFlagsBuffer) - 1) };
+				copyLen = std::min(clang.customCFlags.value.length(), sizeof(customCFlagsBuffer) - 1);
 				clang.customCFlags.value.copy(customCFlagsBuffer, copyLen);
 				customCFlagsBuffer[copyLen] = '\0';
 

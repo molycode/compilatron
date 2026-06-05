@@ -417,6 +417,11 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 		cmd << " -DCLANG_DEFAULT_RTLIB=" << (config.defaultRtlib == ERtlib::CompilerRt ? "compiler-rt" : "libgcc");
 		cmd << " -DCLANG_DEFAULT_UNWINDLIB=" << (config.defaultUnwindlib == EUnwindlib::LibUnwind ? "libunwind" : "libgcc");
 
+		if (!config.vendor.value.empty())
+		{
+			cmd << " -DCLANG_VENDOR=" << ShellQuote(config.vendor.value);
+		}
+
 		// Additional configure flags (applied last so they can override anything)
 		if (!config.additionalConfigureFlags.value.empty())
 		{
