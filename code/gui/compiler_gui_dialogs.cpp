@@ -7,6 +7,7 @@
 #include "common/loggers.hpp"
 #include "common/common.hpp"
 #include "common/process_executor.hpp"
+#include "common/third_party_versions.hpp"
 #if defined(__clang__) && __clang_major__ >= 10
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-warning-option"
@@ -2064,21 +2065,38 @@ void CCompilerGUI::RenderAboutDialog()
 		ImGui::Separator();
 		ImGui::Spacing();
 
-		// Third-party libraries
+		// Third-party libraries — code-library versions are read from each library's own
+		// headers at build time (see third_party_versions.hpp), so they never go stale. Fonts
+		// ship no version symbol, so they carry only the major version we bundle.
 		ImGui::TextDisabled("Third-Party Libraries");
 		ImGui::Spacing();
 
-		constexpr std::array<std::pair<char const*, char const*>, 3> thirdParty{{
-			{ "Dear ImGui 1.92.6", "MIT" },
-			{ "GLFW",             "zlib/libpng" },
-			{ "tge-core",         "MIT" },
+		struct SThirdParty final { std::string_view name; std::string_view version; std::string_view license; };
+		std::array<SThirdParty, 6> const thirdParty{{
+			{ "Dear ImGui",    GetImGuiVersion(), "MIT" },
+			{ "GLFW",          GetGlfwVersion(),  "zlib/libpng" },
+			{ "nlohmann/json", GetJsonVersion(),  "MIT" },
+			{ "tge-core",      "",                "MIT" },
+			{ "Font Awesome",  "6",               "Font Awesome Free" },
+			{ "Roboto",        "",                "Apache-2.0" },
 		}};
 
-		for (auto const& [name, license] : thirdParty)
+		// %.*s renders a string_view without assuming null termination (size + data).
+		for (auto const& lib : thirdParty)
 		{
-			ImGui::BulletText("%s", name);
+			if (!lib.version.empty())
+			{
+				ImGui::BulletText("%.*s %.*s",
+					static_cast<int>(lib.name.size()), lib.name.data(),
+					static_cast<int>(lib.version.size()), lib.version.data());
+			}
+			else
+			{
+				ImGui::BulletText("%.*s", static_cast<int>(lib.name.size()), lib.name.data());
+			}
+
 			ImGui::SameLine();
-			ImGui::TextDisabled("(%s)", license);
+			ImGui::TextDisabled("(%.*s)", static_cast<int>(lib.license.size()), lib.license.data());
 		}
 
 		ImGui::Spacing();
