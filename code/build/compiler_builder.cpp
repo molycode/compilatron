@@ -154,7 +154,7 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 
 	if (!m_shouldStop)
 	{
-		gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Phase 0: Starting cleanup of previous build artifacts");
+		gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Phase 0: Starting cleanup of previous build artifacts");
 		UpdateProgress(EBuildPhase::CleaningPreviousBuild, 0.0f, "Cleaning up previous build artifacts...", "Removing old build directories and previous installations");
 
 		if (!CleanupPreviousBuild(settings))
@@ -165,7 +165,7 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 
 	if (!m_shouldStop)
 	{
-		gLog.Info(Tge::Logging::ETarget::File, "Phase 1: Checking build dependencies");
+		gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "Phase 1: Checking build dependencies");
 		UpdateProgress(EBuildPhase::CheckingDependencies, 0.0f, "Checking build dependencies...");
 
 		// Scope the dependency check to the compiler kinds actually queued — a GCC build must not
@@ -185,7 +185,7 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 		// foundLocations from standard bin dirs only, which would wipe a custom path the user set.
 		if (!g_dependencyManager.AreRequiredDependenciesAvailable(forGcc, forClang))
 		{
-			gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Phase 2: Dependencies missing, provisioning locally");
+			gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Phase 2: Dependencies missing, provisioning locally");
 			UpdateProgress(EBuildPhase::InstallingDependencies, 0.0f, "Installing missing dependencies locally...");
 
 			if (!ProvisionMissingDependencies(forGcc, forClang))
@@ -195,17 +195,29 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 				success = false;
 			}
 		}
+
+		if (success)
+		{
+			for (auto const* dep : g_dependencyManager.GetAllDependencies())
+			{
+				if (dep->IsRequiredFor(forGcc, forClang) && dep->selectedLocation != nullptr)
+				{
+					gLog.Info(Tge::Logging::ETarget::Listeners, "Dependency {} resolved -> {} (v{})",
+						dep->identifier, dep->selectedLocation->path, dep->selectedLocation->version);
+				}
+			}
+		}
 	}
 
 	if (!m_shouldStop && success)
 	{
-		gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Phase 3: Building compilers using CCompilerUnit architecture");
+		gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Phase 3: Building compilers using CCompilerUnit architecture");
 		UpdateProgress(EBuildPhase::DownloadingSources, 0.0f, "Building compilers...", "Building compilers using unit architecture");
 		BuildUsingCompilerUnits(m_units);
 	}
 	else if (m_shouldStop)
 	{
-		gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Build stopped by user");
+		gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Build stopped by user");
 		UpdateProgress(EBuildPhase::Failed, 0.0f, "Build cancelled");
 		success = false;
 	}
@@ -275,7 +287,7 @@ bool CCompilerBuilder::CleanupPreviousBuild(SBuildSettings const& settings)
 		}
 	}
 
-	gLog.Info(Tge::Logging::ETarget::File, "Previous build cleanup completed");
+	gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "Previous build cleanup completed");
 
 	return success;
 }
@@ -309,6 +321,10 @@ bool CCompilerBuilder::ProvisionMissingDependencies(bool forGcc, bool forClang)
 			{
 				gLog.Error(Tge::Logging::ETarget::Listeners, "Failed to install dependency: {}", identifier);
 				success = false;
+			}
+			else
+			{
+				gLog.Info(Tge::Logging::ETarget::Listeners, "Installed dependency: {}", identifier);
 			}
 		}
 	}
@@ -377,7 +393,7 @@ void CCompilerBuilder::UpdateProgress(EBuildPhase phase, float phaseProgress,
 //////////////////////////////////////////////////////////////////////////
 void CCompilerBuilder::CleanupAfterBuild(SBuildSettings const& settings)
 {
-	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Starting post-build cleanup");
+	gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Starting post-build cleanup");
 
 	for (auto const& entry : settings.compilerEntries)
 	{
@@ -404,7 +420,7 @@ void CCompilerBuilder::CleanupAfterBuild(SBuildSettings const& settings)
 		}
 	}
 
-	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Post-build cleanup completed");
+	gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Post-build cleanup completed");
 }
 
 //////////////////////////////////////////////////////////////////////////
