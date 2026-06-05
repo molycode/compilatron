@@ -97,7 +97,7 @@ void CDependencyManager::ScanAllDependencies()
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CDependencyManager::AreAllRequiredDependenciesAvailable() const
+bool CDependencyManager::AreRequiredDependenciesAvailable(bool forGcc, bool forClang) const
 {
 	std::lock_guard<std::mutex> lock(m_dependenciesMutex);
 
@@ -105,7 +105,7 @@ bool CDependencyManager::AreAllRequiredDependenciesAvailable() const
 
 	for (auto const& dep : m_dependencies)
 	{
-		if (dep->IsRequired() && dep->status != EDependencyStatus::Available)
+		if (dep->IsRequiredFor(forGcc, forClang) && dep->status == EDependencyStatus::Missing)
 		{
 			allAvailable = false;
 		}
@@ -115,14 +115,14 @@ bool CDependencyManager::AreAllRequiredDependenciesAvailable() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-std::vector<SAdvancedDependencyInfo*> CDependencyManager::GetMissingRequiredDependencies() const
+std::vector<SAdvancedDependencyInfo*> CDependencyManager::GetMissingRequiredDependencies(bool forGcc, bool forClang) const
 {
 	std::lock_guard<std::mutex> lock(m_dependenciesMutex);
 	std::vector<SAdvancedDependencyInfo*> missing;
 
 	for (auto const& dep : m_dependencies)
 	{
-		if (dep->IsRequired() && dep->status != EDependencyStatus::Available)
+		if (dep->IsRequiredFor(forGcc, forClang) && dep->status == EDependencyStatus::Missing)
 		{
 			missing.push_back(dep.get());
 		}

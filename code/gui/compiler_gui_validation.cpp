@@ -11,20 +11,8 @@ namespace Ctrn
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerGUI::AreRequiredDependenciesAvailable(ECompilerKind kind) const
 {
-	auto allDeps = g_dependencyManager.GetAllDependencies();
-	bool allPresent{ true };
-
-	for (auto* dep : allDeps)
-	{
-		bool const required{ kind == ECompilerKind::Gcc ? dep->requiredForGcc : dep->requiredForClang };
-
-		if (required && dep->status == EDependencyStatus::Missing)
-		{
-			allPresent = false;
-		}
-	}
-
-	return allPresent;
+	return g_dependencyManager.AreRequiredDependenciesAvailable(
+		kind == ECompilerKind::Gcc, kind == ECompilerKind::Clang);
 }
 
 //////////////////////////////////////////////////////////////////////////

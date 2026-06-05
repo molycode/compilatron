@@ -69,6 +69,11 @@ struct SAdvancedDependencyInfo final
 	std::vector<std::string> prerequisites;              // Dependencies that must be installed first
 
 	[[nodiscard]] bool IsRequired() const { return requiredForGcc || requiredForClang; }
+
+	[[nodiscard]] bool IsRequiredFor(bool forGcc, bool forClang) const
+	{
+		return (forGcc && requiredForGcc) || (forClang && requiredForClang);
+	}
 };
 
 class CDependencyManager final : private Tge::SNoCopyNoMove
@@ -80,8 +85,8 @@ public:
 
 	void InitializeAllDependencies();
 	void ScanAllDependencies();
-	[[nodiscard]] bool AreAllRequiredDependenciesAvailable() const;
-	std::vector<SAdvancedDependencyInfo*> GetMissingRequiredDependencies() const;
+	[[nodiscard]] bool AreRequiredDependenciesAvailable(bool forGcc, bool forClang) const;
+	std::vector<SAdvancedDependencyInfo*> GetMissingRequiredDependencies(bool forGcc, bool forClang) const;
 	std::vector<SAdvancedDependencyInfo*> GetAllDependencies() const;
 	SAdvancedDependencyInfo* GetDependency(std::string_view identifier) const;
 	SAdvancedDependencyInfo* GetDependencyByName(std::string_view name) const;

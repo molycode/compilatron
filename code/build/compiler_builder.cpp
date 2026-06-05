@@ -168,15 +168,27 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 		gLog.Info(Tge::Logging::ETarget::File, "Phase 1: Checking build dependencies");
 		UpdateProgress(EBuildPhase::CheckingDependencies, 0.0f, "Checking build dependencies...");
 
+		// Scope the dependency check to the compiler kinds actually queued — a GCC build must not
+		// be gated on Clang-only tools (e.g. ninja), and vice versa. This mirrors the GUI's
+		// per-target Build-button gate (both now route through the same manager predicate).
+		bool forGcc{ false };
+		bool forClang{ false };
+
+		for (auto const* unit : m_units)
+		{
+			forGcc = forGcc || unit->GetKind() == ECompilerKind::Gcc;
+			forClang = forClang || unit->GetKind() == ECompilerKind::Clang;
+		}
+
 		// Trust the manager's current state — it mirrors the Dependencies tab and preserves
 		// user-registered custom locations. Do NOT re-scan here: ScanDependency rebuilds
 		// foundLocations from standard bin dirs only, which would wipe a custom path the user set.
-		if (!g_dependencyManager.AreAllRequiredDependenciesAvailable())
+		if (!g_dependencyManager.AreRequiredDependenciesAvailable(forGcc, forClang))
 		{
 			gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Phase 2: Dependencies missing, provisioning locally");
 			UpdateProgress(EBuildPhase::InstallingDependencies, 0.0f, "Installing missing dependencies locally...");
 
-			if (!ProvisionMissingDependencies())
+			if (!ProvisionMissingDependencies(forGcc, forClang))
 			{
 				gLog.Error(Tge::Logging::ETarget::Listeners, "Failed to provision required dependencies");
 				UpdateProgress(EBuildPhase::Failed, 0.0f, "Build failed: Failed to provision required dependencies");
@@ -269,12 +281,12 @@ bool CCompilerBuilder::CleanupPreviousBuild(SBuildSettings const& settings)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CCompilerBuilder::ProvisionMissingDependencies()
+bool CCompilerBuilder::ProvisionMissingDependencies(bool forGcc, bool forClang)
 {
 	// Delegate provisioning to CDependencyManager (the single owner of download/build-from-source
 	// for build tools). The manager must already be scanned and have its required-flags set by the
 	// GUI before the build starts; BuildThreadFunc re-scans immediately before calling this.
-	std::vector<SAdvancedDependencyInfo*> const missing{ g_dependencyManager.GetMissingRequiredDependencies() };
+	std::vector<SAdvancedDependencyInfo*> const missing{ g_dependencyManager.GetMissingRequiredDependencies(forGcc, forClang) };
 
 	std::vector<std::string> identifiers;
 	identifiers.reserve(missing.size());
