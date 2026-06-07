@@ -2,6 +2,7 @@
 #include "build/compiler_registry.hpp"
 #include "common/common.hpp"
 #include "common/loggers.hpp"
+#include "common/string_util.hpp"
 #include "dependency/dependency_manager.hpp"
 #include <format>
 #include <sstream>
@@ -196,10 +197,7 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 		// Prevent sub-configure cache races under parallel make
 		cmd << " --cache-file=/dev/null";
 
-		if (!config.enabledLanguages.value.empty())
-		{
-			cmd << " --enable-languages=" << ShellQuote(config.enabledLanguages.value);
-		}
+		AppendConfigureFlag(cmd, " --enable-languages=", config.enabledLanguages.value);
 
 		if (config.enableLto)
 		{
@@ -302,25 +300,11 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 			cmd << " --disable-cet";
 		}
 
-		if (!config.withArch.value.empty())
-		{
-			cmd << " --with-arch=" << ShellQuote(config.withArch.value);
-		}
+		AppendConfigureFlag(cmd, " --with-arch=", config.withArch.value);
+		AppendConfigureFlag(cmd, " --with-tune=", config.withTune.value);
+		AppendConfigureFlag(cmd, " --with-sysroot=", config.withSysroot.value);
 
-		if (!config.withTune.value.empty())
-		{
-			cmd << " --with-tune=" << ShellQuote(config.withTune.value);
-		}
-
-		if (!config.withSysroot.value.empty())
-		{
-			cmd << " --with-sysroot=" << ShellQuote(config.withSysroot.value);
-		}
-
-		if (!config.pkgVersion.value.empty())
-		{
-			cmd << " --with-pkgversion=" << ShellQuote(config.pkgVersion.value);
-		}
+		AppendConfigureFlag(cmd, " --with-pkgversion=", config.pkgVersion.value);
 
 		std::string optLevel{};
 
@@ -340,15 +324,16 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 		}
 
 		std::string cflags{ optLevel };
+		std::string const customCFlags{ Trimmed(config.customCFlags.value) };
 
-		if (!config.customCFlags.value.empty())
+		if (!customCFlags.empty())
 		{
 			if (!cflags.empty())
 			{
 				cflags += " ";
 			}
 
-			cflags += config.customCFlags.value;
+			cflags += customCFlags;
 		}
 
 		if (!cflags.empty())
@@ -357,15 +342,16 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 		}
 
 		std::string cxxflags{ optLevel };
+		std::string const customCxxFlags{ Trimmed(config.customCxxFlags.value) };
 
-		if (!config.customCxxFlags.value.empty())
+		if (!customCxxFlags.empty())
 		{
 			if (!cxxflags.empty())
 			{
 				cxxflags += " ";
 			}
 
-			cxxflags += config.customCxxFlags.value;
+			cxxflags += customCxxFlags;
 		}
 
 		if (!cxxflags.empty())
@@ -374,9 +360,11 @@ std::expected<std::string, std::string> CGccUnit::GenerateConfigureCommand() con
 		}
 
 		// Additional configure flags (applied last so they can override anything)
-		if (!config.additionalConfigureFlags.value.empty())
+		std::string const additionalFlags{ Trimmed(config.additionalConfigureFlags.value) };
+
+		if (!additionalFlags.empty())
 		{
-			cmd << " " << config.additionalConfigureFlags;
+			cmd << " " << additionalFlags;
 		}
 
 		result = cmd.str();

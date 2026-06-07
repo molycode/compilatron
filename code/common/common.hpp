@@ -4,6 +4,7 @@
 #include "common/cpu_info.hpp"
 #include "common/state_manager.hpp"
 #include <atomic>
+#include <iosfwd>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -72,6 +73,11 @@ extern std::atomic<bool> g_mainWindowNeedsResize;
 // escaping). Neutralises spaces and every shell metacharacter; use for any path, URL, git
 // ref, or single-argument free-text value spliced into a generated build command.
 [[nodiscard]] std::string ShellQuote(std::string_view value);
+
+// Appends "<prefix><shell-quoted value>" to a generated configure/cmake command, trimming the value
+// first and skipping it entirely when empty (or whitespace-only). prefix carries the leading space
+// and the flag, e.g. " --with-arch=".
+void AppendConfigureFlag(std::ostream& cmd, std::string_view prefix, std::string_view rawValue);
 
 // Wake up the main render loop from any thread. Call whenever background state changes need display.
 void RequestRedraw();

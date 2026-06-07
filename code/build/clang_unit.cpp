@@ -2,6 +2,7 @@
 #include "build/compiler_registry.hpp"
 #include "common/common.hpp"
 #include "common/loggers.hpp"
+#include "common/string_util.hpp"
 #include "dependency/dependency_manager.hpp"
 #include <format>
 #include <sstream>
@@ -33,7 +34,7 @@ void AppendSemicolonTokens(std::vector<std::string>& out, std::string_view list)
 {
 	for (auto const part : list | std::views::split(';'))
 	{
-		std::string_view const token{ part };
+		std::string const token{ Trimmed(std::string_view{ part }) };
 
 		if (!token.empty())
 		{
@@ -369,15 +370,8 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 			cmd << " -G \"Unix Makefiles\"";
 		}
 
-		if (!config.customCFlags.value.empty())
-		{
-			cmd << " -DCMAKE_C_FLAGS=" << ShellQuote(config.customCFlags.value);
-		}
-
-		if (!config.customCxxFlags.value.empty())
-		{
-			cmd << " -DCMAKE_CXX_FLAGS=" << ShellQuote(config.customCxxFlags.value);
-		}
+		AppendConfigureFlag(cmd, " -DCMAKE_C_FLAGS=", config.customCFlags.value);
+		AppendConfigureFlag(cmd, " -DCMAKE_CXX_FLAGS=", config.customCxxFlags.value);
 
 		cmd << " -DLLVM_ENABLE_RTTI=" << (config.enableRtti ? "ON" : "OFF");
 		cmd << " -DLLVM_ENABLE_EH=" << (config.enableEh ? "ON" : "OFF");
@@ -417,15 +411,21 @@ std::expected<std::string, std::string> CClangUnit::GenerateConfigureCommand() c
 		cmd << " -DCLANG_DEFAULT_RTLIB=" << (config.defaultRtlib == ERtlib::CompilerRt ? "compiler-rt" : "libgcc");
 		cmd << " -DCLANG_DEFAULT_UNWINDLIB=" << (config.defaultUnwindlib == EUnwindlib::LibUnwind ? "libunwind" : "libgcc");
 
-		if (!config.vendor.value.empty())
+		// CLANG_VENDOR is concatenated directly before "clang version" with no separator, so a
+		// non-empty value gets exactly one trailing space — the output reads "<Vendor> clang ...".
+		std::string const vendor{ Trimmed(config.vendor.value) };
+
+		if (!vendor.empty())
 		{
-			cmd << " -DCLANG_VENDOR=" << ShellQuote(config.vendor.value);
+			cmd << " -DCLANG_VENDOR=" << ShellQuote(vendor + ' ');
 		}
 
 		// Additional configure flags (applied last so they can override anything)
-		if (!config.additionalConfigureFlags.value.empty())
+		std::string const additionalFlags{ Trimmed(config.additionalConfigureFlags.value) };
+
+		if (!additionalFlags.empty())
 		{
-			cmd << " " << config.additionalConfigureFlags;
+			cmd << " " << additionalFlags;
 		}
 
 		result = cmd.str();

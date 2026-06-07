@@ -1934,7 +1934,7 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 
 				if (ImGui::IsItemHovered())
 				{
-					ImGui::SetTooltip("-DCLANG_VENDOR: provenance prefix shown before the version in 'clang --version'\n(e.g. a farm/baseline tag). Counterpart to GCC's package version.\nLeave empty for the bare 'clang version ...' default.");
+					ImGui::SetTooltip("-DCLANG_VENDOR: provenance prefix shown before the version in 'clang --version'\n(e.g. a farm/baseline tag). Counterpart to GCC's package version.\nJust enter the name (e.g. 'Crytek') — the separating space is added for you.\nLeave empty for the bare 'clang version ...' default.");
 				}
 
 				ImGui::Text("%s:", clang.customCFlags.uiName.data());

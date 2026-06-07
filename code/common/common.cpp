@@ -1,10 +1,12 @@
 #include "common/common.hpp"
+#include "common/string_util.hpp"
 #include "gui/preset_manager.hpp"
 #include "dependency/dependency_manager.hpp"
 #include "dependency/dependency_window.hpp"
 
 #include <cstdlib>
 #include <filesystem>
+#include <ostream>
 
 namespace Ctrn
 {
@@ -168,5 +170,16 @@ std::string ShellQuote(std::string_view value)
 
 	result += '\'';
 	return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void AppendConfigureFlag(std::ostream& cmd, std::string_view prefix, std::string_view rawValue)
+{
+	std::string const value{ Trimmed(rawValue) };
+
+	if (!value.empty())
+	{
+		cmd << prefix << ShellQuote(value);
+	}
 }
 } // namespace Ctrn
