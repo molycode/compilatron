@@ -29,12 +29,12 @@ struct SClangSettings final
 	SProperty<bool>          projectClang{           "clang_projectClang",           "Clang",            true                    };
 	SProperty<bool>          projectClangToolsExtra{ "clang_projectClangToolsExtra", "clang-tools-extra", true                  };
 	SProperty<bool>          projectLld{             "clang_projectLld",             "LLD",              true                    };
-	SProperty<bool>          projectCompilerRt{      "clang_projectCompilerRt",      "CompilerRT",       false                   };
+	SProperty<bool>          projectCompilerRt{      "clang_projectCompilerRt",      "CompilerRT",       true                    };
 	SProperty<bool>          projectLibcxx{          "clang_projectLibcxx",          "libc++",           false                   };
 	SProperty<bool>          projectLibcxxabi{       "clang_projectLibcxxabi",       "libc++abi",        false                   };
 	SProperty<bool>          projectLibunwind{       "clang_projectLibunwind",       "libunwind",        false                   };
 	SProperty<bool>          projectLldb{            "clang_projectLldb",            "LLDB",             false                   };
-	SProperty<bool>          projectOpenmp{          "clang_projectOpenmp",          "OpenMP",           false                   };
+	SProperty<bool>          projectOpenmp{          "clang_projectOpenmp",          "OpenMP",           true                    };
 	SProperty<bool>          projectPolly{           "clang_projectPolly",           "Polly",            false                   };
 	SProperty<bool>          projectPstl{            "clang_projectPstl",            "PSTL",             false                   };
 	SProperty<bool>          projectMlir{            "clang_projectMlir",            "MLIR",             false                   };
