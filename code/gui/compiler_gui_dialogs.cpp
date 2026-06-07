@@ -564,14 +564,8 @@ void CCompilerGUI::RenderUnifiedCompilerSelector(std::string_view label, std::st
 
 		if (currentCompiler.empty())
 		{
-			if (isPerTab)
-			{
-				result = defaultPath.empty() ? "Default (none)" : "Default (" + shortName(defaultPath) + ")";
-			}
-			else
-			{
-				result = defaultPath.empty() ? "(no compiler found)" : shortName(defaultPath);
-			}
+			// No explicit override: show the compiler that will actually be used.
+			result = defaultPath.empty() ? "(no compiler found)" : shortName(defaultPath);
 		}
 		else
 		{
@@ -621,8 +615,8 @@ void CCompilerGUI::RenderUnifiedCompilerSelector(std::string_view label, std::st
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 0.8f));
 	}
 
-	// Extra overhead: separators + Browse + optional Default item
-	int const numPopupItems{ static_cast<int>(entries.size()) + (isPerTab ? 4 : 2) };
+	// Extra overhead: separator + Browse item
+	int const numPopupItems{ static_cast<int>(entries.size()) + 2 };
 	ImGuiComboFlags comboFlags{ ImGuiComboFlags_None };
 
 	if (numPopupItems > 20)
@@ -643,32 +637,16 @@ void CCompilerGUI::RenderUnifiedCompilerSelector(std::string_view label, std::st
 			ImGui::PopStyleColor(4);
 		}
 
-		if (isPerTab)
-		{
-			bool const isUsingDefault{ currentCompiler.empty() };
-			std::string const defaultLabel{ (defaultPath.empty() ? "Default (none)" : "Default (" + shortName(defaultPath) + ")")
-				+ "##" + labelStr + "_useDefault" };
-
-			if (ImGui::Selectable(defaultLabel.c_str(), isUsingDefault))
-			{
-				onSelectionChanged("");
-			}
-
-			if (isUsingDefault)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
-
-			ImGui::Separator();
-		}
-
 		std::string pendingRemovePath;
 
 		for (size_t i = 0; i < entries.size(); ++i)
 		{
 			auto const& entry = entries[i];
 			bool const isSelected{ entry.path == currentCompiler };
-			bool const isAutoDefault{ currentCompiler.empty() && !isPerTab && i == 0 };
+			// With no explicit override, highlight the compiler that will actually be used:
+			// the registry's first entry for the global selector, the effective host for a tab.
+			bool const isAutoDefault{ currentCompiler.empty()
+				&& (isPerTab ? entry.path == defaultPath : i == 0) };
 			std::string entryText{ entry.displayName };
 
 			if (entry.hasProblematicPath)
