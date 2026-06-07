@@ -67,7 +67,7 @@ private:
 	[[nodiscard]] bool AreRequiredDependenciesAvailable(ECompilerKind kind) const;
 	std::string GetMissingDependenciesMessage() const;
 
-	[[nodiscard]] static bool IsTabComplete(SCompilerTab const& tab);
+	[[nodiscard]] bool IsTabComplete(SCompilerTab const& tab) const;
 
 	[[nodiscard]] bool IsCompilerValid(std::string_view compilerPath) const;
 	[[nodiscard]] bool IsTabCompilerValid(SCompilerTab const& tab) const;
@@ -123,8 +123,11 @@ private:
 	void ShowDuplicateDialog();
 	void ShowRenameDialog();
 
-	void SyncBuildSettingsFromTabs();
-	void CreateTabsFromBuildSettings(SBuildSettings const& settings);
+	// Resolves a tab to its authoritative SCompilerEntry by id. Tabs and entries are kept
+	// strictly 1:1, so a missing entry is an invariant violation (asserts).
+	[[nodiscard]] SCompilerEntry& EntryFor(SCompilerTab const& tab);
+	[[nodiscard]] SCompilerEntry const& EntryFor(SCompilerTab const& tab) const;
+	void CreateTabsFromBuildSettings();
 
 	std::uintmax_t m_sourcesSize{ 0 };
 	std::uintmax_t m_buildSize{ 0 };
@@ -190,7 +193,7 @@ private:
 	char m_tokenInputBuffer[128]{};
 	char m_presetNameBuffer[256]{};
 	char m_presetDescriptionBuffer[512]{};
-	char m_customDirectoryBuffer[1024]{};
+	std::string m_customDirectory;
 
 	[[nodiscard]] SCompilerBuildConfig BuildConfigFromTab(SCompilerTab const& tab) const;
 	void CreateUnitForTab(SCompilerTab const& tab);
@@ -201,7 +204,7 @@ private:
 	void RenderCompilerProgressSection(SCompilerTab const& tab);
 	void RenderCompilerLogSection(SCompilerTab const& tab);
 
-	bool RenderTextFieldWithContextMenu(char const* label, char* buffer, size_t bufferSize);
+	bool RenderTextFieldWithContextMenu(char const* label, std::string& text);
 	bool OpenUrlInBrowser(std::string_view url);
 };
 

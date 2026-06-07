@@ -1,31 +1,22 @@
 #pragma once
 
-#include "build/clang_settings.hpp"
 #include "build/compiler_kind.hpp"
-#include "build/gcc_settings.hpp"
 #include <cstdint>
 #include <string>
 
 namespace Ctrn
 {
+// Transient per-tab view state. All persistable build data lives on the matching
+// SCompilerEntry in g_buildSettings.compilerEntries (the single source of truth),
+// resolved by id via CCompilerGUI::EntryFor(tab). This struct holds only UI state.
 struct SCompilerTab final
 {
-	std::string name;              // Selected version/branch (e.g., "main", "llvmorg-21.1.1"); empty until user picks one
+	// Immutable mirror of the entry's compilerType, set once at tab creation and never
+	// rewritten, so it cannot drift. Kept here to avoid string compares in per-frame UI.
 	ECompilerKind kind{ ECompilerKind::Gcc };
-	uint16_t id{ 0 };             // Unique numeric ID — assigned once at tab creation, never 0
+	uint16_t id{ 0 };             // Links tab to its SCompilerEntry and CCompilerUnit — assigned once, never 0
 	bool isOpen{ true };          // Whether tab should be shown
 	bool selectOnOpen{ false };   // Auto-focus this tab on its first rendered frame
-
-	std::string folderName;
-	int numJobs{ 0 };         // 0 = use default based on CPU
-	std::string hostCompiler;  // Override compiler for this tab (empty = use global)
-	std::string sourceRef;     // Pinned git commit SHA (empty = build the selected branch/tag)
-
-	SClangSettings clangSettings;  // Used when kind == ECompilerKind::Clang
-	SGccSettings gccSettings;      // Used when kind == ECompilerKind::Gcc
-
-	// ImGui input buffers are per-tab to prevent focus loss on re-render
-	char folderNameBuffer[256]{};
 
 	// Only updated when not actively typing, to avoid focus loss during input
 	std::string tabDisplayName;

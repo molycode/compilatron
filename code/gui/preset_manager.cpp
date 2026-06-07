@@ -213,10 +213,14 @@ bool CPresetManager::SavePreset(std::string_view name, std::string_view descript
 
 				for (auto const& entry : settings.compilerEntries)
 				{
-					auto entryJson = SettingsToJson(entry);
-					entryJson["clangSettings"] = SettingsToJson(entry.clangSettings);
-					entryJson["gccSettings"] = SettingsToJson(entry.gccSettings);
-					entries.push_back(std::move(entryJson));
+					// Skip incomplete entries (a tab added but no version picked yet).
+					if (!entry.name.value.empty() && !entry.folderName.value.empty())
+					{
+						auto entryJson = SettingsToJson(entry);
+						entryJson["clangSettings"] = SettingsToJson(entry.clangSettings);
+						entryJson["gccSettings"] = SettingsToJson(entry.gccSettings);
+						entries.push_back(std::move(entryJson));
+					}
 				}
 
 				preset["compilerEntries"] = std::move(entries);

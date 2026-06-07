@@ -288,7 +288,8 @@ void CCompilerGUI::StartActualRefresh(ECompilerKind kind)
 		if (!foundTab && tab.kind == kind)
 		{
 			foundTab = true;
-			tabDisplayName = tab.name.empty() ? tabDisplayName : tab.name;
+			std::string const& name{ EntryFor(tab).name.value };
+			tabDisplayName = name.empty() ? tabDisplayName : name;
 		}
 	}
 
@@ -327,7 +328,7 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 
 		ImGui::Text("Directory:");
 
-		RenderTextFieldWithContextMenu("##DirectoryPath", m_customDirectoryBuffer, sizeof(m_customDirectoryBuffer));
+		RenderTextFieldWithContextMenu("##DirectoryPath", m_customDirectory);
 
 		ImGui::SameLine();
 
@@ -381,10 +382,7 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 
 				if (!scanResult.directory.empty())
 				{
-					size_t const len{ std::min(scanResult.directory.size(),
-						sizeof(m_customDirectoryBuffer) - 1) };
-					scanResult.directory.copy(m_customDirectoryBuffer, len);
-					m_customDirectoryBuffer[len] = '\0';
+					m_customDirectory = scanResult.directory;
 				}
 
 				m_scannedCompilers = std::move(scanResult.compilers);
@@ -392,10 +390,10 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 				m_compilerSelectionStates.assign(m_scannedCompilers.size(), 1);
 				m_scanCompleted = true;
 
-				if (m_scannedCompilers.empty() && !std::string_view{ m_customDirectoryBuffer }.empty())
+				if (m_scannedCompilers.empty() && !m_customDirectory.empty())
 				{
 					gLog.Warning(Tge::Logging::ETarget::Listeners,
-						"CompilerGUI: No compilers found in {}", m_customDirectoryBuffer);
+						"CompilerGUI: No compilers found in {}", m_customDirectory);
 				}
 			}
 			else
@@ -506,7 +504,7 @@ void CCompilerGUI::RenderCompilerBrowserDialog()
 					m_scannedAlreadyRegistered.clear();
 					m_compilerSelectionStates.clear();
 					m_scanCompleted = false;
-					m_customDirectoryBuffer[0] = '\0';
+					m_customDirectory.clear();
 					ImGui::CloseCurrentPopup();
 				}
 			}
@@ -789,7 +787,7 @@ void CCompilerGUI::RenderRemoveCompilerDialog()
 
 			for (auto& tab : m_compilerTabs)
 			{
-				if (!foundTabToRemove && tab.name == m_compilerToRemove)
+				if (!foundTabToRemove && EntryFor(tab).name.value == m_compilerToRemove)
 				{
 					foundTabToRemove = true;
 					tab.isOpen = false;
@@ -825,7 +823,8 @@ void CCompilerGUI::RenderCommandDialog()
 		{
 			if (tab.id == m_commandDialogTabId)
 			{
-				m_commandDialogTabName = tab.name;
+				SCompilerEntry const& tabEntry{ EntryFor(tab) };
+				m_commandDialogTabName = tabEntry.name.value;
 
 				auto unitIt = m_compilerUnits.find(tab.id);
 
@@ -835,11 +834,11 @@ void CCompilerGUI::RenderCommandDialog()
 
 					if (tab.kind == ECompilerKind::Gcc)
 					{
-						static_cast<CGccUnit*>(unitIt->second.get())->SetGccSettings(tab.gccSettings);
+						static_cast<CGccUnit*>(unitIt->second.get())->SetGccSettings(tabEntry.gccSettings);
 					}
 					else
 					{
-						static_cast<CClangUnit*>(unitIt->second.get())->SetClangSettings(tab.clangSettings);
+						static_cast<CClangUnit*>(unitIt->second.get())->SetClangSettings(tabEntry.clangSettings);
 					}
 
 					unitIt->second->GenerateCommands();
@@ -901,12 +900,13 @@ void CCompilerGUI::RenderCommandDialog()
 //////////////////////////////////////////////////////////////////////////
 std::string CCompilerGUI::GenerateCompilerCommands(SCompilerTab const& tab) const
 {
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
 	auto unitIt = m_compilerUnits.find(tab.id);
 
 	if (unitIt == m_compilerUnits.end() || unitIt->second == nullptr)
 	{
 		gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: GenerateCompilerCommands: No unit found for tab '{}'", tab.id);
-		return std::format("=== BUILD COMMANDS FOR {} ===\n\nError: Compiler unit not found.\n", tab.name);
+		return std::format("=== BUILD COMMANDS FOR {} ===\n\nError: Compiler unit not found.\n", tabEntry.name.value);
 	}
 
 	CCompilerUnit const& unit = *unitIt->second;
@@ -916,7 +916,7 @@ std::string CCompilerGUI::GenerateCompilerCommands(SCompilerTab const& tab) cons
 		"1. CONFIGURE:\n{}\n\n"
 		"2. BUILD:\n{}\n\n"
 		"3. INSTALL:\n{}",
-		tab.name,
+		tabEntry.name.value,
 		unit.GetConfigureCommand(),
 		unit.GetBuildCommand(),
 		unit.GetInstallCommand());
@@ -947,10 +947,11 @@ void CCompilerGUI::RenderGccAdvancedDialog()
 
 		if (targetTab != nullptr)
 		{
-			auto& gcc = targetTab->gccSettings;
+			SCompilerEntry& tabEntry{ EntryFor(*targetTab) };
+			auto& gcc = tabEntry.gccSettings;
 			bool anyChanged{ false };
 
-			ImGui::Text("Advanced Configuration for: %s", targetTab->folderName.c_str());
+			ImGui::Text("Advanced Configuration for: %s", tabEntry.folderName.value.c_str());
 			ImGui::Separator();
 
 			if (ImGui::CollapsingHeader("Basic Configuration", ImGuiTreeNodeFlags_DefaultOpen))
@@ -1332,7 +1333,7 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 
 		if (targetTab != nullptr)
 		{
-			auto& clang = targetTab->clangSettings;
+			auto& clang = EntryFor(*targetTab).clangSettings;
 			bool anyChanged{ false };
 
 			if (ImGui::CollapsingHeader("Build Configuration", ImGuiTreeNodeFlags_DefaultOpen))

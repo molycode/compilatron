@@ -10,6 +10,7 @@
 #pragma clang diagnostic ignored "-Wnontrivial-memcall"
 #endif
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 #if defined(__clang__) && __clang_major__ >= 10
 #pragma clang diagnostic pop
 #endif
@@ -59,7 +60,7 @@ void CCompilerGUI::Initialize()
 		}
 
 		g_buildSettings = loadedSettings;
-		CreateTabsFromBuildSettings(g_buildSettings);
+		CreateTabsFromBuildSettings();
 	}
 
 	// Raw format: Console colors carry level signal; timestamp + message is sufficient
@@ -135,40 +136,23 @@ void CCompilerGUI::Render()
 
 	if (m_showDependencyWindow)
 	{
-		bool const libffiEnabled{ std::any_of(m_compilerTabs.begin(), m_compilerTabs.end(),
-			[](SCompilerTab const& tab)
-			{
-				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableLibffi.value;
-			}) };
-		g_dependencyManager.SetDynamicRequired("libffi", false, libffiEnabled);
+		// Drive dynamic dependency requirements straight off the authoritative entries.
+		auto anyClangWith{ [](auto predicate)
+		{
+			return std::ranges::any_of(g_buildSettings.compilerEntries, [&predicate](SCompilerEntry const& entry)
+				{ return entry.compilerType.value == "clang" && predicate(entry.clangSettings); });
+		} };
 
-		bool const terminfoEnabled{ std::any_of(m_compilerTabs.begin(), m_compilerTabs.end(),
-			[](SCompilerTab const& tab)
-			{
-				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableTerminfo.value;
-			}) };
-		g_dependencyManager.SetDynamicRequired("libtinfo", false, terminfoEnabled);
-
-		bool const libxml2Enabled{ std::any_of(m_compilerTabs.begin(), m_compilerTabs.end(),
-			[](SCompilerTab const& tab)
-			{
-				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableLibxml2.value;
-			}) };
-		g_dependencyManager.SetDynamicRequired("libxml2", false, libxml2Enabled);
-
-		bool const zlibEnabled{ std::any_of(m_compilerTabs.begin(), m_compilerTabs.end(),
-			[](SCompilerTab const& tab)
-			{
-				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableZlib.value;
-			}) };
-		g_dependencyManager.SetDynamicRequired("zlib", false, zlibEnabled);
-
-		bool const zstdEnabled{ std::any_of(m_compilerTabs.begin(), m_compilerTabs.end(),
-			[](SCompilerTab const& tab)
-			{
-				return tab.kind == ECompilerKind::Clang && tab.clangSettings.enableZstd.value;
-			}) };
-		g_dependencyManager.SetDynamicRequired("zstd", false, zstdEnabled);
+		g_dependencyManager.SetDynamicRequired("libffi", false,
+			anyClangWith([](SClangSettings const& settings) { return settings.enableLibffi.value; }));
+		g_dependencyManager.SetDynamicRequired("libtinfo", false,
+			anyClangWith([](SClangSettings const& settings) { return settings.enableTerminfo.value; }));
+		g_dependencyManager.SetDynamicRequired("libxml2", false,
+			anyClangWith([](SClangSettings const& settings) { return settings.enableLibxml2.value; }));
+		g_dependencyManager.SetDynamicRequired("zlib", false,
+			anyClangWith([](SClangSettings const& settings) { return settings.enableZlib.value; }));
+		g_dependencyManager.SetDynamicRequired("zstd", false,
+			anyClangWith([](SClangSettings const& settings) { return settings.enableZstd.value; }));
 
 		m_showDependencyWindow = g_dependencyWindow.Render();
 	}
@@ -258,7 +242,7 @@ void CCompilerGUI::RenderMainPanel()
 
 				if (!isOpen)
 				{
-					m_compilerToRemove = tab.name;
+					m_compilerToRemove = EntryFor(tab).name.value;
 					m_showRemoveCompilerDialog = true;
 				}
 			}
@@ -274,20 +258,16 @@ void CCompilerGUI::RenderMainPanel()
 			}
 		}
 
-		size_t const numTabsBefore{ m_compilerTabs.size() };
-
-		m_compilerTabs.erase(
-			std::remove_if(m_compilerTabs.begin(), m_compilerTabs.end(),
-				[](SCompilerTab const& tab) { return !tab.isOpen; }),
-			m_compilerTabs.end()
-		);
-
-		if (m_compilerTabs.size() != numTabsBefore)
+		// Remove closed tabs and their authoritative entries together, keyed by id, so a later
+		// dependency save can't resurrect a removed compiler. Entries are erased first (while the
+		// closed tabs still exist) so the open-tab lookup is correct.
+		std::erase_if(g_buildSettings.compilerEntries, [this](SCompilerEntry const& entry)
 		{
-			// A tab was removed — keep g_buildSettings (the authoritative state) in step so a later
-			// dependency save can't resurrect the removed compiler.
-			SyncBuildSettingsFromTabs();
-		}
+			return std::ranges::none_of(m_compilerTabs, [&entry](SCompilerTab const& tab)
+				{ return tab.id == entry.id && tab.isOpen; });
+		});
+
+		std::erase_if(m_compilerTabs, [](SCompilerTab const& tab) { return !tab.isOpen; });
 	}
 	else
 	{
@@ -356,28 +336,25 @@ std::string CCompilerGUI::GetCpuName() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CCompilerGUI::RenderTextFieldWithContextMenu(char const* label, char* buffer, size_t bufferSize)
+bool CCompilerGUI::RenderTextFieldWithContextMenu(char const* label, std::string& text)
 {
 	ImGui::SetNextItemWidth(400);
-	bool changed{ ImGui::InputText(label, buffer, bufferSize) };
+	bool changed{ ImGui::InputText(label, &text) };
 
 	if (ImGui::BeginPopupContextItem())
 	{
 		if (ImGui::MenuItem("Copy"))
 		{
-			ImGui::SetClipboardText(buffer);
+			ImGui::SetClipboardText(text.c_str());
 		}
 
 		if (ImGui::MenuItem("Paste"))
 		{
 			char const* clipboardText = ImGui::GetClipboardText();
 
-			if (clipboardText)
+			if (clipboardText != nullptr)
 			{
-				std::string_view const clipText{ clipboardText };
-				size_t const copyLen = std::min(clipText.size(), bufferSize - 1);
-				clipText.copy(buffer, copyLen);
-				buffer[copyLen] = '\0';
+				text = clipboardText;
 				changed = true;
 			}
 		}
@@ -391,7 +368,7 @@ bool CCompilerGUI::RenderTextFieldWithContextMenu(char const* label, char* buffe
 
 		if (ImGui::MenuItem("Clear"))
 		{
-			buffer[0] = '\0';
+			text.clear();
 			changed = true;
 		}
 

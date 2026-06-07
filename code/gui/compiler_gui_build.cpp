@@ -30,8 +30,10 @@ void CCompilerGUI::StartBuild()
 
 		for (auto const& tab : m_compilerTabs)
 		{
-			if (tab.isOpen && !tab.name.empty() && !tab.folderName.empty())
+			if (tab.isOpen && IsTabComplete(tab))
 			{
+				SCompilerEntry const& tabEntry{ EntryFor(tab) };
+
 				if (IsLldAvailableForTab(tab))
 				{
 					auto unitIt = m_compilerUnits.find(tab.id);
@@ -43,18 +45,18 @@ void CCompilerGUI::StartBuild()
 
 						if (tab.kind == ECompilerKind::Gcc)
 						{
-							static_cast<CGccUnit*>(&unit)->SetGccSettings(tab.gccSettings);
+							static_cast<CGccUnit*>(&unit)->SetGccSettings(tabEntry.gccSettings);
 						}
 						else
 						{
-							static_cast<CClangUnit*>(&unit)->SetClangSettings(tab.clangSettings);
+							static_cast<CClangUnit*>(&unit)->SetClangSettings(tabEntry.clangSettings);
 						}
 
 						unit.GenerateCommands();
 						ClearUnitLog(tab.id);
 
-						std::string folderName{ tab.folderName };
-						std::string name{ tab.name };
+						std::string folderName{ tabEntry.folderName.value };
+						std::string name{ tabEntry.name.value };
 
 						unit.SetCompletionCallback([this, folderName, name](std::string const& unitName, bool success, std::string const&)
 						{
@@ -72,12 +74,12 @@ void CCompilerGUI::StartBuild()
 					}
 					else
 					{
-						gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: StartBuild: No unit found for tab '{}'", tab.name);
+						gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: StartBuild: No unit found for tab '{}'", tabEntry.name.value);
 					}
 				}
 				else
 				{
-					gLog.Warning(Tge::Logging::ETarget::Listeners, "Skipping '{}' — lld selected but ld.lld not found", tab.name);
+					gLog.Warning(Tge::Logging::ETarget::Listeners, "Skipping '{}' — lld selected but ld.lld not found", tabEntry.name.value);
 				}
 			}
 		}
@@ -97,7 +99,6 @@ void CCompilerGUI::StartBuild()
 			}
 		};
 
-		SyncBuildSettingsFromTabs();
 		m_compilerBuilder->StartBuild(std::move(units), g_buildSettings, progressCb, completionCb);
 	}
 }
@@ -107,6 +108,8 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 {
 	if (!m_isBuilding)
 	{
+		SCompilerEntry const& tabEntry{ EntryFor(tab) };
+
 		auto validationResult = ValidateCompilerForBuild(tab);
 
 		bool const validationFailed = validationResult != ECompilerValidationResult::Valid &&
@@ -116,20 +119,20 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 		{
 			std::string actualCompiler{ GetActualCompilerForTab(tab) };
 			std::string errorMsg{ GetValidationErrorMessage(validationResult, actualCompiler,
-			                        GetResolvedInstallPath() + "/" + tab.folderName) };
-			gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': {}", tab.name, errorMsg);
+			                        GetResolvedInstallPath() + "/" + tabEntry.folderName.value) };
+			gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': {}", tabEntry.name.value, errorMsg);
 		}
 		else if (WouldInstallToSystemDirectory(tab))
 		{
-			std::string folderName{ tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName };
+			std::string folderName{ tabEntry.folderName.value.empty() ? FolderNameFromCompilerName(tabEntry.name.value) : tabEntry.folderName.value };
 			std::string plannedPath{ GetResolvedInstallPath() + "/" + folderName };
-			gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': would install to system directory '{}'", tab.name, plannedPath);
+			gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': would install to system directory '{}'", tabEntry.name.value, plannedPath);
 		}
 		else
 		{
 			if (!IsLldAvailableForTab(tab))
 			{
-				gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': lld selected but ld.lld not found", tab.name);
+				gLog.Error(Tge::Logging::ETarget::Listeners, "CompilerGUI: Build blocked for '{}': lld selected but ld.lld not found", tabEntry.name.value);
 			}
 			else
 			{
@@ -146,18 +149,18 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 
 				if (tab.kind == ECompilerKind::Gcc)
 				{
-					static_cast<CGccUnit*>(&unit)->SetGccSettings(tab.gccSettings);
+					static_cast<CGccUnit*>(&unit)->SetGccSettings(tabEntry.gccSettings);
 				}
 				else
 				{
-					static_cast<CClangUnit*>(&unit)->SetClangSettings(tab.clangSettings);
+					static_cast<CClangUnit*>(&unit)->SetClangSettings(tabEntry.clangSettings);
 				}
 
 				unit.GenerateCommands();
 				ClearUnitLog(tab.id);
 
-				std::string folderName{ tab.folderName };
-				std::string name{ tab.name };
+				std::string folderName{ tabEntry.folderName.value };
+				std::string name{ tabEntry.name.value };
 
 				unit.SetCompletionCallback([this, folderName, name](std::string const& unitName, bool success, std::string const&)
 				{
@@ -201,7 +204,7 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 			}
 			else
 			{
-				gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: StartSingleCompilerBuild: No unit found for tab '{}'", tab.name);
+				gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: StartSingleCompilerBuild: No unit found for tab '{}'", tabEntry.name.value);
 			}
 
 			auto progressCb = [this](SBuildProgress const& progress)
@@ -222,21 +225,18 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 			SBuildSettings singleCompilerSettings = g_buildSettings;
 			singleCompilerSettings.compilerEntries.clear();
 
-			SCompilerEntry entry;
-			entry.name = tab.name;
-			entry.folderName = tab.folderName;
-			entry.numJobs = (tab.numJobs == 0) ? g_cpuInfo.GetDefaultNumJobs() : tab.numJobs;
-			entry.hostCompiler = tab.hostCompiler;
-			entry.sourceRef = tab.sourceRef;
-			entry.compilerType = tab.kind == ECompilerKind::Gcc ? "gcc" : "clang";
-			entry.clangSettings = tab.clangSettings;
-			entry.gccSettings = tab.gccSettings;
+			SCompilerEntry entry{ tabEntry };
+
+			if (entry.numJobs.value == 0)
+			{
+				entry.numJobs = g_cpuInfo.GetDefaultNumJobs();
+			}
 
 			singleCompilerSettings.compilerEntries.push_back(std::move(entry));
 
 			m_compilerBuilder->StartBuild(std::move(units), singleCompilerSettings, progressCb, completionCb);
 
-				gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Started single compiler build for {}", tab.name);
+				gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Started single compiler build for {}", tabEntry.name.value);
 			}
 		}
 	}
@@ -272,7 +272,8 @@ void CCompilerGUI::DeleteCompilerSources(SCompilerTab const& tab)
 {
 	namespace fs = std::filesystem;
 
-	std::string sourcesPath{ g_dataDir + "/sources/" + tab.folderName };
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
+	std::string sourcesPath{ g_dataDir + "/sources/" + tabEntry.folderName.value };
 
 	if (fs::exists(sourcesPath))
 	{
@@ -281,18 +282,18 @@ void CCompilerGUI::DeleteCompilerSources(SCompilerTab const& tab)
 
 		if (!ec)
 		{
-			gLog.Info(Tge::Logging::ETarget::Listeners, "Deleted sources for {} ({})", tab.name, tab.folderName);
+			gLog.Info(Tge::Logging::ETarget::Listeners, "Deleted sources for {} ({})", tabEntry.name.value, tabEntry.folderName.value);
 			gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Deleted sources: {}", sourcesPath);
 		}
 		else
 		{
-			gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to delete sources for {}: {}", tab.name, ec.message());
+			gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to delete sources for {}: {}", tabEntry.name.value, ec.message());
 			gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Source deletion error: {}", ec.message());
 		}
 	}
 	else
 	{
-		gLog.Info(Tge::Logging::ETarget::Listeners, "No sources directory found for {}", tab.name);
+		gLog.Info(Tge::Logging::ETarget::Listeners, "No sources directory found for {}", tabEntry.name.value);
 	}
 }
 
@@ -301,7 +302,8 @@ void CCompilerGUI::DeleteCompilerBuild(SCompilerTab const& tab)
 {
 	namespace fs = std::filesystem;
 
-	std::string buildPath{ g_dataDir + "/build_compilers/" + tab.folderName };
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
+	std::string buildPath{ g_dataDir + "/build_compilers/" + tabEntry.folderName.value };
 
 	if (fs::exists(buildPath))
 	{
@@ -310,18 +312,18 @@ void CCompilerGUI::DeleteCompilerBuild(SCompilerTab const& tab)
 
 		if (!ec)
 		{
-			gLog.Info(Tge::Logging::ETarget::Listeners, "Deleted build artifacts for {} ({})", tab.name, tab.folderName);
+			gLog.Info(Tge::Logging::ETarget::Listeners, "Deleted build artifacts for {} ({})", tabEntry.name.value, tabEntry.folderName.value);
 			gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Deleted build: {}", buildPath);
 		}
 		else
 		{
-			gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to delete build artifacts for {}: {}", tab.name, ec.message());
+			gLog.Warning(Tge::Logging::ETarget::Listeners, "Failed to delete build artifacts for {}: {}", tabEntry.name.value, ec.message());
 			gLog.Warning(Tge::Logging::ETarget::File, "CompilerGUI: Build deletion error: {}", ec.message());
 		}
 	}
 	else
 	{
-		gLog.Info(Tge::Logging::ETarget::Listeners, "No build directory found for {}", tab.name);
+		gLog.Info(Tge::Logging::ETarget::Listeners, "No build directory found for {}", tabEntry.name.value);
 	}
 }
 

@@ -4,6 +4,7 @@ add_library(imgui_lib STATIC
 	upstream/imgui_draw.cpp
 	upstream/imgui_tables.cpp
 	upstream/imgui_widgets.cpp
+	upstream/misc/cpp/imgui_stdlib.cpp
 	upstream/backends/imgui_impl_glfw.cpp
 	upstream/backends/imgui_impl_opengl3.cpp
 )
@@ -11,6 +12,7 @@ add_library(imgui_lib STATIC
 target_include_directories(imgui_lib SYSTEM PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/upstream
 	${CMAKE_CURRENT_SOURCE_DIR}/upstream/backends
+	${CMAKE_CURRENT_SOURCE_DIR}/upstream/misc/cpp
 )
 
 target_link_libraries(imgui_lib PRIVATE glfw)

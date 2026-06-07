@@ -6,6 +6,8 @@
 #include "common/common.hpp"
 #include "common/loggers.hpp"
 
+#include <tge/init/assert.hpp>
+
 #if defined(__clang__) && __clang_major__ >= 10
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-warning-option"
@@ -24,25 +26,46 @@
 namespace Ctrn
 {
 //////////////////////////////////////////////////////////////////////////
-bool CCompilerGUI::IsTabComplete(SCompilerTab const& tab)
+SCompilerEntry& CCompilerGUI::EntryFor(SCompilerTab const& tab)
 {
-	return !tab.name.empty() && !tab.folderName.empty();
+	auto const it{ std::ranges::find_if(g_buildSettings.compilerEntries,
+		[&tab](SCompilerEntry const& entry) { return entry.id == tab.id; }) };
+	TGE_ASSERT(it != g_buildSettings.compilerEntries.end(), "EntryFor: no SCompilerEntry matches tab id");
+	return *it;
+}
+
+//////////////////////////////////////////////////////////////////////////
+SCompilerEntry const& CCompilerGUI::EntryFor(SCompilerTab const& tab) const
+{
+	auto const it{ std::ranges::find_if(g_buildSettings.compilerEntries,
+		[&tab](SCompilerEntry const& entry) { return entry.id == tab.id; }) };
+	TGE_ASSERT(it != g_buildSettings.compilerEntries.end(), "EntryFor: no SCompilerEntry matches tab id");
+	return *it;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CCompilerGUI::IsTabComplete(SCompilerTab const& tab) const
+{
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
+	return !tabEntry.name.value.empty() && !tabEntry.folderName.value.empty();
 }
 
 //////////////////////////////////////////////////////////////////////////
 SCompilerBuildConfig CCompilerGUI::BuildConfigFromTab(SCompilerTab const& tab) const
 {
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
+
 	SCompilerBuildConfig config;
 	config.id = tab.id;
 	// Use the same derivation as validation so the path that gets safety-validated
 	// (system-dir / self-overwrite checks) matches the path actually built/installed to.
-	config.folderName = tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName;
+	config.folderName = tabEntry.folderName.value.empty() ? FolderNameFromCompilerName(tabEntry.name.value) : tabEntry.folderName.value;
 	config.sourcesDir = g_dataDir + "/sources/" + config.folderName;
 	config.buildDir = g_dataDir + "/build_compilers/" + config.folderName;
 	config.dependenciesDir = g_dataDir + "/dependencies";
-	config.numJobs = tab.numJobs > 0 ? tab.numJobs : std::max(1u, std::thread::hardware_concurrency() / 2);
-	config.hostCompiler = tab.hostCompiler;
-	config.sourceRef = tab.sourceRef;
+	config.numJobs = tabEntry.numJobs.value > 0 ? tabEntry.numJobs.value : std::max(1u, std::thread::hardware_concurrency() / 2);
+	config.hostCompiler = tabEntry.hostCompiler.value;
+	config.sourceRef = tabEntry.sourceRef.value;
 
 	return config;
 }
@@ -50,18 +73,19 @@ SCompilerBuildConfig CCompilerGUI::BuildConfigFromTab(SCompilerTab const& tab) c
 //////////////////////////////////////////////////////////////////////////
 void CCompilerGUI::CreateUnitForTab(SCompilerTab const& tab)
 {
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
 	SCompilerBuildConfig const config{ BuildConfigFromTab(tab) };
-	auto unit = CCompilerUnit::Create(tab.kind, tab.name.empty() ? std::to_string(tab.id) : tab.name, g_buildSettings, config);
+	auto unit = CCompilerUnit::Create(tab.kind, tabEntry.name.value.empty() ? std::to_string(tab.id) : tabEntry.name.value, g_buildSettings, config);
 
 	if (unit != nullptr)
 	{
 		if (tab.kind == ECompilerKind::Gcc)
 		{
-			static_cast<CGccUnit*>(unit.get())->SetGccSettings(tab.gccSettings);
+			static_cast<CGccUnit*>(unit.get())->SetGccSettings(tabEntry.gccSettings);
 		}
 		else
 		{
-			static_cast<CClangUnit*>(unit.get())->SetClangSettings(tab.clangSettings);
+			static_cast<CClangUnit*>(unit.get())->SetClangSettings(tabEntry.clangSettings);
 		}
 
 		unit->Initialize();
@@ -70,39 +94,44 @@ void CCompilerGUI::CreateUnitForTab(SCompilerTab const& tab)
 	}
 	else
 	{
-		gLog.Warning(Tge::Logging::ETarget::File, "CreateUnitForTab: Failed to create unit for tab '{}' (kind='{}')", tab.name, tab.kind == ECompilerKind::Gcc ? "gcc" : "clang");
+		gLog.Warning(Tge::Logging::ETarget::File, "CreateUnitForTab: Failed to create unit for tab '{}' (kind='{}')", tabEntry.name.value, tab.kind == ECompilerKind::Gcc ? "gcc" : "clang");
 	}
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CCompilerGUI::AddCompilerEntry(std::string_view compilerType)
 {
+	uint16_t const id{ m_nextCompilerTabId++ };
+
+	// The entry is the source of truth; the tab is its transient view. Create both, id-matched.
+	SCompilerEntry entry;
+	entry.id = id;
+
 	SCompilerTab newTab;
+	newTab.id = id;
 
 	if (compilerType == "gcc")
 	{
 		newTab.kind = ECompilerKind::Gcc;
-		newTab.folderName = "gcc_" + std::to_string(m_nextCompilerTabId);
-		newTab.gccSettings = SGccSettings{};
+		entry.compilerType = "gcc";
+		entry.folderName = "gcc_" + std::to_string(id);
 	}
 	else if (compilerType == "clang")
 	{
 		newTab.kind = ECompilerKind::Clang;
-		newTab.folderName = "clang_" + std::to_string(m_nextCompilerTabId);
-		newTab.clangSettings = SClangSettings{};
-		newTab.clangSettings.numNinjaLinkJobs = g_cpuInfo.GetDefaultLinkJobs();
+		entry.compilerType = "clang";
+		entry.folderName = "clang_" + std::to_string(id);
+		entry.clangSettings.numNinjaLinkJobs = g_cpuInfo.GetDefaultLinkJobs();
 	}
 	else
 	{
-		newTab.folderName = "compiler_" + std::to_string(m_nextCompilerTabId);
+		entry.folderName = "compiler_" + std::to_string(id);
 	}
 
-	newTab.id = m_nextCompilerTabId;
 	newTab.isOpen = true;
 	newTab.selectOnOpen = true;
-	newTab.numJobs = 0;
 
-	std::string const idStr{ std::to_string(newTab.id) };
+	std::string const idStr{ std::to_string(id) };
 	newTab.tabDisplayName  = std::string{ newTab.kind == ECompilerKind::Gcc ? "gcc" : "clang" } + " (no version)";
 	newTab.tabLabel        = newTab.tabDisplayName + "###" + idStr;
 	newTab.idTabCompiler   = "##TabCompiler" + idStr;
@@ -116,14 +145,17 @@ void CCompilerGUI::AddCompilerEntry(std::string_view compilerType)
 	newTab.idSaveLog       = "Save Log##" + idStr;
 	newTab.idCompilerLog   = "CompilerLog##" + idStr;
 
+	// Push the entry first so EntryFor(tab) resolves while the unit is created.
+	g_buildSettings.compilerEntries.push_back(std::move(entry));
 	m_compilerTabs.push_back(std::move(newTab));
 	CreateUnitForTab(m_compilerTabs.back());
-	m_nextCompilerTabId++;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 {
+	SCompilerEntry& tabEntry{ EntryFor(tab) };
+
 	ImGui::Separator();
 
 	std::string baseUrl{ tab.kind == ECompilerKind::Gcc ? std::string{ GccSourceUrl } : std::string{ ClangSourceUrl } };
@@ -161,7 +193,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	else
 	{
 		std::string comboId{ "##Version" + std::to_string(tab.id) };
-		std::string displayText{ tab.name.empty() ? "Select version..." : tab.name };
+		std::string displayText{ tabEntry.name.value.empty() ? "Select version..." : tabEntry.name.value };
 		float textWidth{ ImGui::CalcTextSize(displayText.c_str()).x };
 		float placeholderWidth{ ImGui::CalcTextSize("Select version...").x };
 		float minWidth{ 120.0f };
@@ -174,7 +206,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 
 			std::vector<std::string> branches = m_versionManager.GetBranches(tab.kind);
 			std::vector<std::string> tags = m_versionManager.GetTags(tab.kind);
-			m_versionSelectorDialog.Open(branches, tags, tab.name, tab.kind);
+			m_versionSelectorDialog.Open(branches, tags, tabEntry.name.value, tab.kind);
 			ImGui::OpenPopup("Select Version##VersionSelector");
 		}
 
@@ -185,20 +217,20 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 			if (selection.isCommit)
 			{
 				// Keep the readable label; the SHA is the build ref via sourceRef.
-				tab.sourceRef = selection.value;
+				tabEntry.sourceRef = selection.value;
 
-				if (tab.name.empty())
+				if (tabEntry.name.value.empty())
 				{
-					tab.name = "commit " + selection.value.substr(0, 8);
+					tabEntry.name = "commit " + selection.value.substr(0, 8);
 				}
 			}
 			else
 			{
-				tab.name = selection.value;
-				tab.sourceRef.clear();
+				tabEntry.name = selection.value;
+				tabEntry.sourceRef.value.clear();
 			}
 
-			tab.tabDisplayName = tab.name;
+			tab.tabDisplayName = tabEntry.name.value;
 			tab.tabLabel = tab.tabDisplayName + "###" + std::to_string(tab.id);
 			SaveActivePreset();
 
@@ -206,7 +238,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 
 			if (unitIt != m_compilerUnits.end() && unitIt->second != nullptr)
 			{
-				unitIt->second->SetName(tab.name);
+				unitIt->second->SetName(tabEntry.name.value);
 				unitIt->second->UpdateBuildConfig(BuildConfigFromTab(tab));
 			}
 		}
@@ -278,16 +310,16 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 		}
 	}
 
-	if (!tab.sourceRef.empty())
+	if (!tabEntry.sourceRef.value.empty())
 	{
-		ImGui::TextColored(ImVec4(0.85f, 0.7f, 0.3f, 1.0f), "Pinned commit: %.8s", tab.sourceRef.c_str());
+		ImGui::TextColored(ImVec4(0.85f, 0.7f, 0.3f, 1.0f), "Pinned commit: %.8s", tabEntry.sourceRef.value.c_str());
 		ImGui::SameLine();
 
 		std::string const clearPinId{ "Clear pin##" + std::to_string(tab.id) };
 
 		if (ImGui::SmallButton(clearPinId.c_str()))
 		{
-			tab.sourceRef.clear();
+			tabEntry.sourceRef.value.clear();
 			SaveActivePreset();
 
 			auto const unitIt = m_compilerUnits.find(tab.id);
@@ -303,16 +335,8 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	ImGui::Text("%s:", s_entry.folderName.uiName.data());
 	ImGui::SameLine();
 
-	if (tab.folderName != tab.folderNameBuffer)
+	if (RenderTextFieldWithContextMenu("##FolderName", tabEntry.folderName.value))
 	{
-		size_t copyLen{ std::min(tab.folderName.length(), sizeof(tab.folderNameBuffer) - 1) };
-		tab.folderName.copy(tab.folderNameBuffer, copyLen);
-		tab.folderNameBuffer[copyLen] = '\0';
-	}
-
-	if (RenderTextFieldWithContextMenu("##FolderName", tab.folderNameBuffer, sizeof(tab.folderNameBuffer)))
-	{
-		tab.folderName = tab.folderNameBuffer;
 		SaveActivePreset();
 	}
 
@@ -322,7 +346,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	if (validationResult == ECompilerValidationResult::CompilerSelfOverwrite)
 	{
 		std::string actualCompiler{ GetActualCompilerForTab(tab) };
-		std::string targetPath{ GetResolvedInstallPath() + "/" + tab.folderName };
+		std::string targetPath{ GetResolvedInstallPath() + "/" + tabEntry.folderName.value };
 		std::string errorMsg{ GetValidationErrorMessage(validationResult, actualCompiler, targetPath) };
 		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 100, 100, 255));
 		ImGui::TextWrapped("WARNING: %s", errorMsg.c_str());
@@ -332,8 +356,8 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 
 	if (isSystemInstall)
 	{
-		std::string folderName{ tab.folderName.empty() ?
-			FolderNameFromCompilerName(tab.name) : tab.folderName };
+		std::string folderName{ tabEntry.folderName.value.empty() ?
+			FolderNameFromCompilerName(tabEntry.name.value) : tabEntry.folderName.value };
 		std::string plannedPath{ GetResolvedInstallPath() + "/" + folderName };
 		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 100, 100, 255));
 		ImGui::TextWrapped("WARNING: This would install to a system directory: %s", plannedPath.c_str());
@@ -362,14 +386,14 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	ImGui::NewLine();
 
 	int maxJobs{ g_cpuInfo.logicalCores };
-	int currentJobs{ (tab.numJobs == 0) ? g_cpuInfo.GetDefaultNumJobs() : tab.numJobs };
+	int currentJobs{ (tabEntry.numJobs.value == 0) ? g_cpuInfo.GetDefaultNumJobs() : tabEntry.numJobs.value };
 
 	ImGui::Text("%s:", s_entry.numJobs.uiName.data());
 	ImGui::SetNextItemWidth(200);
 
 	if (ImGui::SliderInt("##JobCount", &currentJobs, 1, maxJobs, "%d jobs"))
 	{
-		tab.numJobs = currentJobs;
+		tabEntry.numJobs = currentJobs;
 	}
 
 	if (ImGui::IsItemDeactivatedAfterEdit())
@@ -393,7 +417,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 
 	if (ImGui::Button("Reset##JobCount"))
 	{
-		tab.numJobs = 0;
+		tabEntry.numJobs = 0;
 		SaveActivePreset();
 	}
 
@@ -421,9 +445,9 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 	bool hasDependencies{ AreRequiredDependenciesAvailable(tab.kind) };
 	bool hasValidCompiler{ IsTabCompilerValid(tab) };
 
-	RenderUnifiedCompilerSelector(tab.idTabCompiler, tab.hostCompiler,
+	RenderUnifiedCompilerSelector(tab.idTabCompiler, tabEntry.hostCompiler.value,
 		[this, &tab](std::string const& newCompiler) {
-			tab.hostCompiler = newCompiler;
+			EntryFor(tab).hostCompiler = newCompiler;
 			SaveActivePreset();
 		},
 		true
@@ -434,7 +458,7 @@ void CCompilerGUI::RenderCompilerTab(SCompilerTab& tab)
 		ImGui::SetTooltip("Set the host compiler for this specific build.\nLeave as default to use the globally selected host compiler.");
 	}
 
-	if (!hasValidCompiler && !tab.hostCompiler.empty())
+	if (!hasValidCompiler && !tabEntry.hostCompiler.value.empty())
 	{
 		ImGui::SameLine();
 		ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "%s", ICON_FA_TRIANGLE_EXCLAMATION);
@@ -637,7 +661,7 @@ void CCompilerGUI::RenderDeleteButtons(SCompilerTab const& tab, bool isBuilding)
 void CCompilerGUI::RenderDeleteSourcesButton(SCompilerTab const& tab, bool isBuilding)
 {
 
-	std::string sourcesPath{ g_dataDir + "/sources/" + tab.folderName };
+	std::string sourcesPath{ g_dataDir + "/sources/" + EntryFor(tab).folderName.value };
 	bool sourcesExist{ std::filesystem::exists(sourcesPath) };
 
 	bool sourcesButtonEnabled{ sourcesExist && !isBuilding };
@@ -698,7 +722,7 @@ void CCompilerGUI::RenderDeleteSourcesButton(SCompilerTab const& tab, bool isBui
 			m_sourcesDialogJustOpened = false;
 		}
 
-		ImGui::Text("Delete source code for %s?", tab.name.c_str());
+		ImGui::Text("Delete source code for %s?", EntryFor(tab).name.value.c_str());
 		ImGui::Separator();
 		ImGui::Text("Path: %s", sourcesPath.c_str());
 		ImGui::Text("Size: %s", FormatSize(m_sourcesSize).c_str());
@@ -741,7 +765,7 @@ void CCompilerGUI::RenderDeleteSourcesButton(SCompilerTab const& tab, bool isBui
 void CCompilerGUI::RenderDeleteBuildButton(SCompilerTab const& tab, bool isBuilding)
 {
 
-	std::string buildPath{ g_dataDir + "/build_compilers/" + tab.folderName };
+	std::string buildPath{ g_dataDir + "/build_compilers/" + EntryFor(tab).folderName.value };
 	bool buildExists{ std::filesystem::exists(buildPath) };
 
 	bool buildButtonEnabled{ buildExists && !isBuilding };
@@ -802,7 +826,7 @@ void CCompilerGUI::RenderDeleteBuildButton(SCompilerTab const& tab, bool isBuild
 			m_buildDialogJustOpened = false;
 		}
 
-		ImGui::Text("Delete build artifacts for %s?", tab.name.c_str());
+		ImGui::Text("Delete build artifacts for %s?", EntryFor(tab).name.value.c_str());
 		ImGui::Separator();
 		ImGui::Text("Path: %s", buildPath.c_str());
 		ImGui::Text("Size: %s", FormatSize(m_buildSize).c_str());
@@ -902,7 +926,7 @@ void CCompilerGUI::RenderCompilerLogSection(SCompilerTab const& tab)
 		}
 
 		std::string const emptyMsg{ std::format(
-			"No build output yet for {}. Compilation progress will appear here.", tab.name) };
+			"No build output yet for {}. Compilation progress will appear here.", EntryFor(tab).name.value) };
 		RenderLogPanel(tab.idCompilerLog, entries, emptyMsg);
 	}
 

@@ -27,14 +27,15 @@ bool CCompilerGUI::IsCompilerValid(std::string_view compilerPath) const
 SCompiler CCompilerGUI::GetActualSCompilerForTab(SCompilerTab const& tab) const
 {
 	SCompiler result;
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
 
-	if (tab.hostCompiler.empty())
+	if (tabEntry.hostCompiler.value.empty())
 	{
 		result = GetEffectiveHostSCompiler();
 	}
 	else
 	{
-		result = CompilerFromPath(tab.hostCompiler);
+		result = CompilerFromPath(tabEntry.hostCompiler.value);
 	}
 
 	return result;
@@ -88,7 +89,8 @@ std::string CCompilerGUI::GetActualCompilerForTab(SCompilerTab const& tab) const
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerGUI::WouldInstallToSystemDirectory(SCompilerTab const& tab) const
 {
-	std::string folderName{ tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName };
+	SCompilerEntry const& tabEntry{ EntryFor(tab) };
+	std::string folderName{ tabEntry.folderName.value.empty() ? FolderNameFromCompilerName(tabEntry.name.value) : tabEntry.folderName.value };
 	std::string plannedInstallPath{ GetResolvedInstallPath() + "/" + folderName };
 
 	std::error_code ec;
@@ -174,7 +176,7 @@ std::string CCompilerGUI::FindLldForTab(SCompilerTab const& tab) const
 {
 	std::string result;
 
-	if (tab.kind == ECompilerKind::Clang && tab.clangSettings.linker.value == "lld")
+	if (tab.kind == ECompilerKind::Clang && EntryFor(tab).clangSettings.linker.value == "lld")
 	{
 		std::string const actualCompiler{ GetActualCompilerForTab(tab) };
 		std::error_code ec;
@@ -233,7 +235,7 @@ std::string CCompilerGUI::FindLldForTab(SCompilerTab const& tab) const
 bool CCompilerGUI::IsLldAvailableForTab(SCompilerTab const& tab) const
 {
 	return tab.kind != ECompilerKind::Clang
-	    || tab.clangSettings.linker.value != "lld"
+	    || EntryFor(tab).clangSettings.linker.value != "lld"
 	    || !FindLldForTab(tab).empty();
 }
 
@@ -245,7 +247,8 @@ ECompilerValidationResult CCompilerGUI::ValidateCompilerForBuild(SCompilerTab co
 
 	if (!actualCompiler.empty())
 	{
-		std::string folderName{ tab.folderName.empty() ? FolderNameFromCompilerName(tab.name) : tab.folderName };
+		SCompilerEntry const& tabEntry{ EntryFor(tab) };
+		std::string folderName{ tabEntry.folderName.value.empty() ? FolderNameFromCompilerName(tabEntry.name.value) : tabEntry.folderName.value };
 		std::string plannedInstallPath{ GetResolvedInstallPath() + "/" + folderName };
 		result = Ctrn::ValidateCompilerForBuild(actualCompiler, plannedInstallPath);
 	}

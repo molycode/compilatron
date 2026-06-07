@@ -36,8 +36,8 @@ void CCompilerGUI::RefreshPresetNames()
 //////////////////////////////////////////////////////////////////////////
 void CCompilerGUI::SaveActivePreset()
 {
-	// Gather both authoritative slices into g_buildSettings, then defer to the single global saver.
-	SyncBuildSettingsFromTabs();
+	// g_buildSettings.compilerEntries is already authoritative; gather the dependency-location
+	// slice too, then defer to the single global saver.
 	g_dependencyWindow.SaveLocationSelectionsToPresets();
 	(void)g_presetManager.SaveActivePreset();
 }
@@ -231,15 +231,9 @@ void CCompilerGUI::RenderPresetControls()
 
 	ImGui::Text("Install Directory:");
 	ImGui::SameLine();
-	static char installDirBuffer[512];
-	size_t copyLen{ std::min(g_buildSettings.installDirectory.length(), sizeof(installDirBuffer) - 1) };
-	g_buildSettings.installDirectory.copy(installDirBuffer, copyLen);
-	installDirBuffer[copyLen] = '\0';
-	ImGui::SetNextItemWidth(200);
 
-	if (RenderTextFieldWithContextMenu("##InstallDir", installDirBuffer, sizeof(installDirBuffer)))
+	if (RenderTextFieldWithContextMenu("##InstallDir", g_buildSettings.installDirectory))
 	{
-		g_buildSettings.installDirectory = installDirBuffer;
 		SaveActivePreset();
 	}
 
@@ -270,9 +264,6 @@ void CCompilerGUI::RenderPresetControls()
 		if (!selectedPath.empty())
 		{
 			g_buildSettings.installDirectory = selectedPath;
-			size_t const browseLen = std::min(selectedPath.length(), sizeof(installDirBuffer) - 1);
-			selectedPath.copy(installDirBuffer, browseLen);
-			installDirBuffer[browseLen] = '\0';
 			SaveActivePreset();
 		}
 
@@ -339,7 +330,7 @@ void CCompilerGUI::RenderPresetControls()
 
 		for (auto const& tab : m_compilerTabs)
 		{
-			if (tab.isOpen && !tab.name.empty() && !tab.folderName.empty())
+			if (tab.isOpen && IsTabComplete(tab))
 			{
 				hasValidCompilers = true;
 
@@ -503,7 +494,7 @@ void CCompilerGUI::SelectPreset(std::string_view name)
 		m_currentPresetName = name;
 		g_stateManager.SetActivePreset(name);
 		g_buildSettings = loadedSettings;
-		CreateTabsFromBuildSettings(g_buildSettings);
+		CreateTabsFromBuildSettings();
 		g_dependencyWindow.LoadLocationSelectionsFromPresets();
 	}
 	else
@@ -661,19 +652,20 @@ void CCompilerGUI::SaveToPreset(std::string_view presetName, std::string_view de
 
 	for (auto const& tab : m_compilerTabs)
 	{
-		if (tab.isOpen && (tab.name.empty() || tab.folderName.empty()))
+		SCompilerEntry const& tabEntry{ EntryFor(tab) };
+
+		if (tab.isOpen && (tabEntry.name.value.empty() || tabEntry.folderName.value.empty()))
 		{
 			gLog.Warning(Tge::Logging::ETarget::Listeners,
 				"Preset '{}': excluded {} tab '{}' — {} not set",
 				presetName,
 				tab.kind == ECompilerKind::Gcc ? "gcc" : "clang",
 				tab.tabDisplayName,
-				(tab.name.empty() && tab.folderName.empty()) ? "version and folder" :
-				tab.name.empty() ? "version" : "folder name");
+				(tabEntry.name.value.empty() && tabEntry.folderName.value.empty()) ? "version and folder" :
+				tabEntry.name.value.empty() ? "version" : "folder name");
 		}
 	}
 
-	SyncBuildSettingsFromTabs();
 	bool success{ g_presetManager.SavePreset(presetName, description, g_buildSettings) };
 
 	if (success)
@@ -690,58 +682,34 @@ void CCompilerGUI::SaveToPreset(std::string_view presetName, std::string_view de
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCompilerGUI::SyncBuildSettingsFromTabs()
+void CCompilerGUI::CreateTabsFromBuildSettings()
 {
-	g_buildSettings.compilerEntries.clear();
-
-	for (auto const& tab : m_compilerTabs)
-	{
-		if (tab.isOpen && !tab.name.empty() && !tab.folderName.empty())
-		{
-			SCompilerEntry entry;
-			entry.name = tab.name;
-			entry.folderName = tab.folderName;
-			entry.numJobs = tab.numJobs;
-			entry.hostCompiler = tab.hostCompiler;
-			entry.sourceRef = tab.sourceRef;
-			entry.compilerType = tab.kind == ECompilerKind::Gcc ? "gcc" : "clang";
-			entry.clangSettings = tab.clangSettings;
-			entry.gccSettings = tab.gccSettings;
-			g_buildSettings.compilerEntries.push_back(std::move(entry));
-		}
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCompilerGUI::CreateTabsFromBuildSettings(SBuildSettings const& settings)
-{
-	gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Creating tabs from build settings with {} compiler entries", settings.compilerEntries.size());
+	gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Creating tabs from build settings with {} compiler entries", g_buildSettings.compilerEntries.size());
 
 	m_compilerTabs.clear();
 	m_compilerUnits.clear();
 
-	for (auto const& entry : settings.compilerEntries)
+	// Entries are already loaded into g_buildSettings (the source of truth). Stamp each a fresh id
+	// and create its transient tab — no data is copied out of the entry.
+	for (auto& entry : g_buildSettings.compilerEntries)
 	{
 		if (!entry.name.value.empty() && !entry.folderName.value.empty())
 		{
+			entry.id = m_nextCompilerTabId++;
+
 			SCompilerTab tab;
-			tab.name = entry.name.value;
-			tab.folderName = entry.folderName.value;
-			tab.numJobs = entry.numJobs.value;
-			tab.sourceRef = entry.sourceRef.value;
+			tab.id = entry.id;
 			tab.isOpen = true;
 
 			if (!entry.compilerType.value.empty())
 			{
 				tab.kind = entry.compilerType.value == "gcc" ? ECompilerKind::Gcc : ECompilerKind::Clang;
-				tab.clangSettings = entry.clangSettings;
-				tab.gccSettings = entry.gccSettings;
 
-				if (tab.clangSettings.numNinjaLinkJobs == 0)
+				if (entry.clangSettings.numNinjaLinkJobs == 0)
 				{
-					bool const isRelease{ tab.clangSettings.buildType == EBuildType::Release
-						|| tab.clangSettings.buildType == EBuildType::MinSizeRel };
-					tab.clangSettings.numNinjaLinkJobs = isRelease
+					bool const isRelease{ entry.clangSettings.buildType == EBuildType::Release
+						|| entry.clangSettings.buildType == EBuildType::MinSizeRel };
+					entry.clangSettings.numNinjaLinkJobs = isRelease
 						? g_cpuInfo.GetDefaultLinkJobs()
 						: g_cpuInfo.GetDefaultLinkJobsConservative();
 				}
@@ -749,15 +717,13 @@ void CCompilerGUI::CreateTabsFromBuildSettings(SBuildSettings const& settings)
 			else
 			{
 				gLog.Warning(Tge::Logging::ETarget::File,
-					"CreateTabsFromBuildSettings: entry '{}' has no compilerType, defaulting to gcc", entry.name);
+					"CreateTabsFromBuildSettings: entry '{}' has no compilerType, defaulting to gcc", entry.name.value);
 				tab.kind = ECompilerKind::Gcc;
 			}
 
-			tab.id = m_nextCompilerTabId++;
-
 			std::string const idStr{ std::to_string(tab.id) };
-			tab.tabDisplayName  = tab.name;
-			tab.tabLabel        = tab.name + "###" + idStr;
+			tab.tabDisplayName  = entry.name.value;
+			tab.tabLabel        = entry.name.value + "###" + idStr;
 			tab.idTabCompiler   = "##TabCompiler" + idStr;
 			tab.idDeleteSources = "Delete Sources##" + idStr;
 			tab.idSourcesPopup  = "Confirm Delete Sources##" + idStr;
@@ -774,16 +740,13 @@ void CCompilerGUI::CreateTabsFromBuildSettings(SBuildSettings const& settings)
 				std::filesystem::path const hostPath{ entry.hostCompiler.value };
 				std::string const filename = hostPath.filename().string();
 
-				if (filename.find("++") != std::string::npos)
-				{
-					tab.hostCompiler = entry.hostCompiler.value;
-				}
-				else
+				if (filename.find("++") == std::string::npos)
 				{
 					// Old preset format: hostCompiler was a bin directory — migrate to full executable path
 					std::string const exe = (tab.kind == ECompilerKind::Clang) ? "clang++" : "g++";
-					tab.hostCompiler = entry.hostCompiler.value + "/" + exe;
-					gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Migrated old-format compiler override: {} -> {}", entry.hostCompiler, tab.hostCompiler);
+					std::string migrated{ entry.hostCompiler.value + "/" + exe };
+					gLog.Info(Tge::Logging::ETarget::File, "CompilerGUI: Migrated old-format compiler override: {} -> {}", entry.hostCompiler.value, migrated);
+					entry.hostCompiler = std::move(migrated);
 				}
 			}
 

@@ -91,7 +91,7 @@ void CCompilerGUI::CopyCompilerLogToClipboard(uint16_t tabId)
 		{
 			if (tab.id == tabId)
 			{
-				displayName = tab.name;
+				displayName = EntryFor(tab).name.value;
 				break;
 			}
 		}
@@ -113,7 +113,7 @@ void CCompilerGUI::SaveCompilerLogToFile(uint16_t tabId)
 	{
 		if (tab.id == tabId)
 		{
-			displayName = tab.name;
+			displayName = EntryFor(tab).name.value;
 			break;
 		}
 	}
