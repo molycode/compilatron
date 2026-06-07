@@ -736,7 +736,7 @@ void CDependencyManager::InitializeLibraries()
 	// zstd dev headers — recommended for LLVM/Clang (LLVM_ENABLE_ZSTD set to FORCE_ON when enabled)
 	{
 		auto dep = std::make_unique<SAdvancedDependencyInfo>();
-		dep->name = "zstd";
+		dep->name = "libzstd-dev";
 		dep->identifier = "zstd";
 		dep->description = "zstd development headers (recommended for LLVM — enables zstd compression in debug info and object files)";
 		dep->systemPackage = "libzstd-dev"; // Ubuntu/Debian; Fedora/openSUSE: libzstd-devel; Arch: zstd
