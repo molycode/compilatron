@@ -21,9 +21,6 @@ namespace Ctrn
 struct SCompilerBuildConfig final
 {
 	int numJobs{ 0 };
-	bool keepDependencies{ true };
-	bool keepSources{ true };
-	bool updateSources{ true };       // Whether to fetch latest changes before building
 	std::string folderName;      // Installation folder name (e.g., "gcc_15", "clang_21")
 	std::string buildDir;        // Full build directory path
 	std::string sourcesDir;      // Full sources directory path
@@ -79,7 +76,6 @@ public:
 	[[nodiscard]] bool Configure();
 	[[nodiscard]] bool Build();
 	[[nodiscard]] bool Install();
-	void Cleanup();
 
 	ECompilerStatus GetStatus() const { return m_status.load(); }
 	float GetProgress() const { return m_progress.load(); }

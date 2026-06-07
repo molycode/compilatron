@@ -55,7 +55,6 @@ private:
 
 	bool CleanupPreviousBuild(SBuildSettings const& settings);
 	bool ProvisionMissingDependencies(bool forGcc, bool forClang);
-	void CleanupAfterBuild(SBuildSettings const& settings);
 	void UpdateProgress(EBuildPhase phase, float phaseProgress,
 	                   std::string const& statusMessage, std::string const& task = "");
 

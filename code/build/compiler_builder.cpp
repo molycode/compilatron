@@ -222,19 +222,6 @@ void CCompilerBuilder::BuildThreadFunc(SBuildSettings const& settings)
 		success = false;
 	}
 
-	if (success)
-	{
-		bool needsCleanup{ std::ranges::any_of(settings.compilerEntries, [](auto const& entry)
-		{
-			return !entry.keepDependencies || !entry.keepSources;
-		}) };
-
-		if (needsCleanup)
-		{
-			CleanupAfterBuild(settings);
-		}
-	}
-
 	m_sleepInhibitor.Release();
 	m_isBuilding = false;
 
@@ -388,39 +375,6 @@ void CCompilerBuilder::UpdateProgress(EBuildPhase phase, float phaseProgress,
 	}
 
 	gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Progress: {} (%.1f%%) - {} {}", statusMessage, m_progress.overallProgress * 100.0f, task.empty() ? "" : "- ", task);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCompilerBuilder::CleanupAfterBuild(SBuildSettings const& settings)
-{
-	gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Starting post-build cleanup");
-
-	for (auto const& entry : settings.compilerEntries)
-	{
-		if (!entry.keepSources && !entry.folderName.value.empty())
-		{
-			fs::path buildPath = fs::path(m_buildDir) / entry.folderName.value;
-
-			if (fs::exists(buildPath))
-			{
-				gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Removing build directory: {}", buildPath.string());
-				fs::remove_all(buildPath);
-			}
-		}
-
-		if (!entry.keepSources && !entry.folderName.value.empty())
-		{
-			fs::path sourcePath = fs::path(m_sourceDir) / entry.folderName.value;
-
-			if (fs::exists(sourcePath))
-			{
-				gLog.Info(Tge::Logging::ETarget::File, "CompilerBuilder: Removing source directory: {}", sourcePath.string());
-				fs::remove_all(sourcePath);
-			}
-		}
-	}
-
-	gLog.Info(Tge::Logging::ETarget::File | Tge::Logging::ETarget::Listeners, "CompilerBuilder: Post-build cleanup completed");
 }
 
 //////////////////////////////////////////////////////////////////////////

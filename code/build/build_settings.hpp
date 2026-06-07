@@ -23,9 +23,6 @@ struct SCompilerEntry final
 	SProperty<std::string> name{             "name",             "Version",            ""      };
 	SProperty<std::string> folderName{       "folderName",       "Folder Name",        ""      };
 	SProperty<int>         numJobs{          "jobCount",         "Compilation Jobs",   0       };
-	SProperty<bool>        keepDependencies{ "keepDependencies", "Keep dependencies",  true    };
-	SProperty<bool>        keepSources{      "keepSources",      "Keep sources",       true    };
-	SProperty<bool>        updateSources{    "updateSources",    "Update sources",     true    };
 	SProperty<std::string> hostCompiler{     "compilerOverride", "Host Compiler",      ""      };
 	SProperty<std::string> compilerType{     "compilerType",     "Compiler type",      ""      };
 	SProperty<std::string> sourceRef{        "sourceRef",        "Pinned commit",      ""      };
@@ -36,14 +33,12 @@ struct SCompilerEntry final
 
 	auto Properties()
 	{
-		return std::tie(name, folderName, numJobs, keepDependencies,
-		                keepSources, updateSources, hostCompiler, compilerType, sourceRef);
+		return std::tie(name, folderName, numJobs, hostCompiler, compilerType, sourceRef);
 	}
 
 	auto Properties() const
 	{
-		return std::tie(name, folderName, numJobs, keepDependencies,
-		                keepSources, updateSources, hostCompiler, compilerType, sourceRef);
+		return std::tie(name, folderName, numJobs, hostCompiler, compilerType, sourceRef);
 	}
 
 	bool operator==(SCompilerEntry const&) const = default;

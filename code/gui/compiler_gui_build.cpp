@@ -226,8 +226,6 @@ void CCompilerGUI::StartSingleCompilerBuild(SCompilerTab const& tab)
 			entry.name = tab.name;
 			entry.folderName = tab.folderName;
 			entry.numJobs = (tab.numJobs == 0) ? g_cpuInfo.GetDefaultNumJobs() : tab.numJobs;
-			entry.keepDependencies = tab.keepDependencies;
-			entry.keepSources = tab.keepSources;
 			entry.hostCompiler = tab.hostCompiler;
 			entry.sourceRef = tab.sourceRef;
 			entry.compilerType = tab.kind == ECompilerKind::Gcc ? "gcc" : "clang";

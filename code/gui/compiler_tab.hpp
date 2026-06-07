@@ -17,8 +17,6 @@ struct SCompilerTab final
 	bool selectOnOpen{ false };   // Auto-focus this tab on its first rendered frame
 
 	std::string folderName;
-	bool keepDependencies{ true };
-	bool keepSources{ true };
 	int numJobs{ 0 };         // 0 = use default based on CPU
 	std::string hostCompiler;  // Override compiler for this tab (empty = use global)
 	std::string sourceRef;     // Pinned git commit SHA (empty = build the selected branch/tag)

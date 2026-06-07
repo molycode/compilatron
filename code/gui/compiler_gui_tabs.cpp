@@ -100,8 +100,6 @@ void CCompilerGUI::AddCompilerEntry(std::string_view compilerType)
 	newTab.id = m_nextCompilerTabId;
 	newTab.isOpen = true;
 	newTab.selectOnOpen = true;
-	newTab.keepDependencies = true;
-	newTab.keepSources = true;
 	newTab.numJobs = 0;
 
 	std::string const idStr{ std::to_string(newTab.id) };

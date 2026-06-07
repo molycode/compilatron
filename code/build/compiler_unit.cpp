@@ -309,55 +309,49 @@ bool CCompilerUnit::ExecuteCommand(std::string_view command, bool captureOutput,
 //////////////////////////////////////////////////////////////////////////
 bool CCompilerUnit::ExecuteGitFetchWithRetry(std::string_view sourcesDir, std::string_view targetBranch)
 {
-	if (GetBuildConfig().updateSources)
+	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Found existing source directory, updating to latest version...");
+
+	// Retry git fetch with exponential backoff for network resilience
+	bool fetchSucceeded{ false };
+	int maxRetries{ 3 };
+	int delaySeconds{ 2 };
+
+	for (int attempt = 1; attempt <= maxRetries && !m_shouldStop; attempt++)
 	{
-		m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Found existing source directory, updating to latest version...");
+		std::string fetchCmd{ std::format("cd {} && {} fetch --depth 1 origin {} --progress 2>&1", ShellQuote(sourcesDir), ShellQuote(ResolveGit()), ShellQuote(targetBranch)) };
 
-		// Retry git fetch with exponential backoff for network resilience
-		bool fetchSucceeded{ false };
-		int maxRetries{ 3 };
-		int delaySeconds{ 2 };
-
-		for (int attempt = 1; attempt <= maxRetries && !m_shouldStop; attempt++)
+		if (ExecuteCommand(fetchCmd))
 		{
-			std::string fetchCmd{ std::format("cd {} && {} fetch --depth 1 origin {} --progress 2>&1", ShellQuote(sourcesDir), ShellQuote(ResolveGit()), ShellQuote(targetBranch)) };
-
-			if (ExecuteCommand(fetchCmd))
-			{
-				fetchSucceeded = true;
-				break;
-			}
-
-			if (attempt < maxRetries && !m_shouldStop)
-			{
-				m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Network error on attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetries) +
-				    " - retrying in " + std::to_string(delaySeconds) + " seconds...");
-
-				// Interruptible sleep: wake every 100ms to check for stop signal
-				int const totalMs{ delaySeconds * 1000 };
-				int elapsed{ 0 };
-
-				while (elapsed < totalMs && !m_shouldStop)
-				{
-					std::this_thread::sleep_for(std::chrono::milliseconds(100));
-					elapsed += 100;
-				}
-
-				delaySeconds *= 2; // Exponential backoff: 2s, 4s, 8s...
-			}
+			fetchSucceeded = true;
+			break;
 		}
 
-		if (!fetchSucceeded && !m_shouldStop)
+		if (attempt < maxRetries && !m_shouldStop)
 		{
-			m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to fetch latest changes after " + std::to_string(maxRetries) + " attempts");
-			ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source fetch failed");
-			return false;
-		}
+			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Network error on attempt " + std::to_string(attempt) + "/" + std::to_string(maxRetries) +
+			    " - retrying in " + std::to_string(delaySeconds) + " seconds...");
 
-		return true;
+			// Interruptible sleep: wake every 100ms to check for stop signal
+			int const totalMs{ delaySeconds * 1000 };
+			int elapsed{ 0 };
+
+			while (elapsed < totalMs && !m_shouldStop)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				elapsed += 100;
+			}
+
+			delaySeconds *= 2; // Exponential backoff: 2s, 4s, 8s...
+		}
 	}
 
-	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Skipping source update (update disabled) - using existing sources...");
+	if (!fetchSucceeded && !m_shouldStop)
+	{
+		m_unitLog.Error(Tge::Logging::ETarget::Listeners, "Failed to fetch latest changes after " + std::to_string(maxRetries) + " attempts");
+		ReportProgress(ECompilerStatus::Failed, ProgressDownloadEnd, "Source fetch failed");
+		return false;
+	}
+
 	return true;
 }
 
@@ -985,35 +979,6 @@ void CCompilerUnit::WriteBuildManifest(std::filesystem::path const& installPath)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCompilerUnit::Cleanup()
-{
-	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cleaning up build artifacts...");
-
-	namespace fs = std::filesystem;
-	SCompilerBuildConfig const& config = GetBuildConfig();
-
-	if (!config.keepDependencies)
-	{
-		if (fs::exists(config.buildDir))
-		{
-			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Removing build directory: " + config.buildDir);
-			fs::remove_all(config.buildDir);
-		}
-	}
-
-	if (!config.keepSources)
-	{
-		if (fs::exists(config.sourcesDir))
-		{
-			m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Removing sources directory: " + config.sourcesDir);
-			fs::remove_all(config.sourcesDir);
-		}
-	}
-
-	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Cleanup completed");
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CCompilerUnit::Stop()
 {
 	m_unitLog.Info(Tge::Logging::ETarget::Listeners, "Stopping build...");
@@ -1075,11 +1040,6 @@ void CCompilerUnit::ExecuteBuildLifecycle()
 	bool const success{ ExecuteBuildStages() };
 
 	TGE_ASSERT(IsCompleted(), "ExecuteBuildLifecycle exited without terminal status");
-
-	if (!GetBuildConfig().keepSources || !GetBuildConfig().keepDependencies)
-	{
-		Cleanup();
-	}
 
 	ReportCompletion(success, m_failureReason);
 }

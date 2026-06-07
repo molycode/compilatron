@@ -702,8 +702,6 @@ void CCompilerGUI::SyncBuildSettingsFromTabs()
 			entry.name = tab.name;
 			entry.folderName = tab.folderName;
 			entry.numJobs = tab.numJobs;
-			entry.keepDependencies = tab.keepDependencies;
-			entry.keepSources = tab.keepSources;
 			entry.hostCompiler = tab.hostCompiler;
 			entry.sourceRef = tab.sourceRef;
 			entry.compilerType = tab.kind == ECompilerKind::Gcc ? "gcc" : "clang";
@@ -730,8 +728,6 @@ void CCompilerGUI::CreateTabsFromBuildSettings(SBuildSettings const& settings)
 			tab.name = entry.name.value;
 			tab.folderName = entry.folderName.value;
 			tab.numJobs = entry.numJobs.value;
-			tab.keepDependencies = entry.keepDependencies.value;
-			tab.keepSources = entry.keepSources.value;
 			tab.sourceRef = entry.sourceRef.value;
 			tab.isOpen = true;
 
