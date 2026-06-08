@@ -214,7 +214,7 @@ void CDependencyWindow::RenderDepsTable(std::vector<SAdvancedDependencyInfo*> co
 			}
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::TextUnformatted(dep->identifier.c_str());
+			ImGui::TextUnformatted(dep->name.c_str());
 
 			ImGui::TableSetColumnIndex(2);
 
@@ -756,7 +756,7 @@ void CDependencyWindow::RecalculateColumnWidths()
 	for (auto const* dep : allDeps)
 	{
 		m_nameColumnWidth = std::max(m_nameColumnWidth,
-			ImGui::CalcTextSize(dep->identifier.c_str()).x);
+			ImGui::CalcTextSize(dep->name.c_str()).x);
 	}
 
 	for (auto const* dep : allDeps)
