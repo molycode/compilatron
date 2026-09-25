@@ -1074,7 +1074,7 @@ void CCompilerGUI::RenderGccAdvancedDialog()
 
 				if (ImGui::IsItemHovered())
 				{
-					ImGui::SetTooltip("--enable-default-pie: Security enhancement");
+					ImGui::SetTooltip("--enable-default-pie: Security enhancement\nUnlike distro GCCs, _FORTIFY_SOURCE is not on by default; set it in your project's optimized build flags.");
 				}
 
 				anyChanged |= ImGui::Checkbox(gcc.enableBuildId.uiName.data(), &gcc.enableBuildId.value);
@@ -1895,6 +1895,7 @@ void CCompilerGUI::RenderClangAdvancedDialog()
 					ImGui::Text("runtime dir (libomp/libc++/libunwind) to the rpath of programs you build, so they run");
 					ImGui::Text("without LD_LIBRARY_PATH. <CFGDIR>-relative, so it survives the toolchain being moved.");
 					ImGui::Text("Local convenience - leave OFF for depot/farm toolchains whose artifacts ship elsewhere.");
+					ImGui::Text("Unlike distro compilers, _FORTIFY_SOURCE is not on by default; set it in your project's optimized build flags.");
 					ImGui::EndTooltip();
 				}
 
